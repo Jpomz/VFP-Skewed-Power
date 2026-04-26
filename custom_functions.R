@@ -79,7 +79,7 @@ plot_sub_lambda <- function(
   # lambda trimmed ####
   # estimate lambda from trimmed data
   x_trimmed_vector <- x_under |>
-    filter(x > est_xmin) |>
+    filter(x >= est_xmin) |>
     pull(x)
   trimmed_n <- length(x_trimmed_vector)
   lambda_trimmed <- calcLike(negLL.fn = negLL.PLB,
@@ -204,6 +204,33 @@ parallel_rep_sub_lambda <- function(df){
   out_df <- bind_rows(out)
   return(out_df)
 }
+
+# parallel_rep_gradient ####
+# this is a helper function to run the simulations across a gradient in parallel
+parallel_rep_gradient <- function(df){
+  out <- NULL
+  # number of sim parameter sets
+  n_row <- nrow(df)
+  # empty list for reps
+  for(i in 1:n_row){
+    df_in <- df[i,]
+    out[[i]] <- plot_sub_lambda(
+      n = df_in$n, 
+      lambda = df_in$known_lambda,
+      xmin = df_in$xmin, 
+      xmax = df_in$xmax, 
+      h = df_in$h, 
+      b = df_in$b,
+      vecDiff = df_in$vecDiff,
+      plot = FALSE)
+    out[[i]]$pr_scenario <- df_in$pr_scenario
+    out[[i]]$group <- df_in$group
+    out[[i]]$known_beta <- df_in$known_beta
+  }
+  out_df <- bind_rows(out)
+  return(out_df)
+}
+
 
 
 # samples x, undersamples, estimate xmin and trim, estimate lambda, back calculate count/distribution of body sizes
@@ -354,6 +381,7 @@ plot_unsub_lambda <- function(
 # estimates the total count from a lambda and x-range to a new range of x (xmin2 == "smaller" x)
 estimate_pareto_N = function(n, lambda, xmin, xmin2, xmax){
   lambdaPlus = lambda + 1
+  
   n * (xmax^(lambdaPlus) - xmin2^(lambdaPlus)) /
     (xmax^(lambdaPlus) - xmin^(lambdaPlus))
 }
@@ -481,4 +509,133 @@ parallel_rep_compare_pareto_n <- function(df){
   }
   out_df <- bind_rows(out)
   return(out_df)
+}
+
+# this function is modified from Pomeranz et al. 2024 J Animal Ecology
+sim_gradient_result <- function(n = 1000,
+                       b, #b = c(-1.9, -2, -2.1)
+                       env_gradient, #env_gradient = c(-1, 0, 1)
+                       rep, #rep = 1
+                       m_lower, # m_lower = 0.001; m_upper = 100
+                       m_upper,
+                       vecDiff){
+  stopifnot(length(b) == length(env_gradient))
+  known_relationship <- -(max(b) - min(b)) / 
+    (max(env_gradient) - min(env_gradient)) 
+  pr_scenarios <- data.frame(h = c(
+    0.00001,
+    0.01),
+    b = c(1.5),
+    pr_scenario = c("01", "04"))
+  # simulate values from distribution
+  sim_out <- list()
+  for(i in 1:rep){
+    df <- tibble(
+      known_b = rep(b, each = n),
+      known_relationship = known_relationship,
+      env_gradient = rep(env_gradient, each = n),
+      n = n,
+      m_lower = m_lower,
+      m_upper = m_upper,)
+    
+    
+      sample_list <- list()
+      for(n_b in 1:length(b)){
+        sample_list[[n_b]] <- rPLB(n = n,
+                                   xmin = m_lower,
+                                   xmax = m_upper,
+                                   b = b[n_b])
+      }
+      m_sample <- unlist(sample_list)
+  
+    
+    df$m <- m_sample
+    df$rep <- i
+    for(p in 1:nrow(pr_scenarios)){
+      pr <- sample_pr(x = df$m,
+                      h = pr_scenarios[p, 1],
+                      b = pr_scenarios[p, 2])
+      new_name <- paste0("scenario_", pr_scenarios[p, 3])
+      df[[new_name]] <- pr
+    }
+    sim_out[[i]] <- df
+  }
+  
+  sim_df <- bind_rows(sim_out)
+  lambda_est <- sim_df |> 
+    pivot_longer(scenario_01:scenario_04,
+                 names_to = "scenario",
+                 values_to = "sample_prob") |>
+    select(-n, -m_lower, -m_upper) |>
+    group_by(rep, known_b, known_relationship, scenario, env_gradient) |>
+    nest() |>
+    ### pickup here
+    mutate(lambda_est = map(data, est_lambda, vecDiff = vecDiff)) |>
+    ungroup() |>
+    select(-data) |>
+    unnest(lambda_est)
+  
+  return(lambda_est)
+}
+
+
+gradient_beta_est <- function(lambda_est){
+  beta_est <- lambda_est |>
+    group_by(known_relationship, rep, scenario, est) |>
+    nest() |>
+    mutate(beta_est = 
+             map(data, 
+                 est_beta)) |>
+    select(-data) |>
+    unnest(beta_est)
+  return(beta_est)
+}
+
+
+# function to estimate lambda and beta from nested data with different sampling scenarios
+est_lambda <- function(df, vecDiff){
+  #df <- nest_df$data[[1]]
+  bias_vector <- df |>
+    mutate(sampled = rbinom(n(), 1, prob = sample_prob)) |>
+    filter(sampled == 1) |>
+    pull(m)
+  bias_lambda <- calcLike(negLL.fn = negLL.PLB,
+                          x = bias_vector,
+                          xmin = min(bias_vector), 
+                          xmax = max(bias_vector), 
+                          n = length(bias_vector), 
+                          sumlogx = sum(log(bias_vector)), 
+                          p = -1.5,
+                          suppress.warnings = TRUE,
+                          vecDiff = vecDiff)
+  x_power <- conpl$new(bias_vector)
+  x_xmin <- estimate_xmin(x_power)$xmin
+  censored_vector <- bias_vector[bias_vector>=x_xmin]
+  censor_lambda <- calcLike(negLL.fn = negLL.PLB,
+                          x = censored_vector,
+                          xmin = min(censored_vector), 
+                          xmax = max(censored_vector), 
+                          n = length(censored_vector), 
+                          sumlogx = sum(log(censored_vector)), 
+                          p = -1.5,
+                          suppress.warnings = TRUE,
+                          vecDiff = vecDiff)
+  out_df <- data.frame(est = c("bias", "censor"),
+                       est_lambda = c(bias_lambda$MLE,
+                                      censor_lambda$MLE),
+                       lo_lambda = c(bias_lambda$conf[1],
+                                     censor_lambda$conf[1]),
+                       hi_lambda = c(bias_lambda$conf[2],
+                                     censor_lambda$conf[2]))
+  return(out_df)
+}
+
+est_beta <- function(df){
+  model = lm(est_lambda~env_gradient, data = df)
+  b_est = coef(model)[2]
+  b_conf = confint(model)[2,]
+  out_coef = data.frame(beta_est = b_est, 
+                        beta_lo = b_conf[1],
+                        beta_hi = b_conf[2])
+  return(out_coef)
 }

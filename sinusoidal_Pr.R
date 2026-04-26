@@ -14,9 +14,40 @@ source("master_variable_designation.R")
 set.seed(2112)
 dat <- expand_grid(
   h = h,
-  b = b,
+  b = c(1.5, 1.75, 2),
   x = c(exp(seq(log(0.001), log(10), length.out = 1000)))) |>
 mutate(pr = sample_pr(x = x, h = h, b = b))
+
+
+# figure out new h and b values
+dat |>
+  group_by(h, b) |>
+  mutate(scenario = cur_group_id()) |>
+  filter(scenario == 1 |
+           scenario == 2 |
+           scenario == 5 |
+           scenario == 6) |>
+  ggplot(aes(x = x, 
+             y = pr, 
+             color = as.factor(scenario))) +
+  geom_line(linewidth = 2) +
+  geom_vline(aes(xintercept = 0.005), linetype = "dashed") +
+  geom_hline(aes(yintercept = 0.9), linetype = "dashed") +
+  scale_x_log10() +
+  theme_bw() +
+  labs(title = "Sampling probability as a function of body mass",
+       x =expression(Log[10]~dry~mass),
+       y = "Sampling probability")
+
+dat |>
+  group_by(h, b) |>
+  mutate(scenario = cur_group_id()) |>
+  filter(scenario == 1 |
+           scenario == 4 |
+           scenario == 5 |
+           scenario == 6) |>
+  distinct(h, b, scenario) |>
+  arrange(scenario)
 
 dat |>
   ggplot(aes(x = x, 
@@ -35,6 +66,32 @@ dat |>
        caption = "The horizontal dashed line represents a 90% sampling probability for reference. The vertical line shows an individual of 0.1 mg dry mass. \nDashed lines are chosen arbritarily for illustrative purposes.")
 
 ggsave("plots/sampling_probability.png", scale = 2)
+
+
+## 4 scenarios on one plot
+dat |>
+  mutate(scenario = case_when(
+    h == 0.00001 & b == 1.5 ~ "minimal",
+    h == 0.0001 & b == 1.5 ~ "moderate",
+    h == 0.00001 & b == 2 ~ "strong",
+    h == 0.0001 & b == 2 ~ "extreme",
+  ),
+  scenario = factor(scenario, 
+                       levels = c("minimal", "moderate", "strong", "extreme"))) |>
+  ggplot(aes(x = x, 
+             y = pr, 
+             color = scenario)) +
+  geom_line(linewidth = 2) +
+  geom_vline(aes(xintercept = 0.005), linetype = "dashed") +
+  geom_hline(aes(yintercept = 0.9), linetype = "dashed") +
+  scale_x_log10() +
+  theme_bw() +
+  labs(title = "Sampling probability as a function of body mass",
+       x =expression(Log[10]~dry~mass),
+       y = "Sampling probability") +
+  lims(x = c(exp(log(0.001)), exp(log(.1))))
+
+
 # Example of undersampling ####
 # make SI figures of "real" data and undersampling results
 
@@ -84,6 +141,28 @@ both_dats |>
        caption = "Examples of how samples from a power law distribution (blue bars) are affected by different combinations of variables (facet titles) \nin the sampling probability equation, and how under sampled data (black bars) appears. \nUnder sampling is minor in top left and increases to extreme in the bottom right. Original N = 5000, \u03bb = -2")
 ggsave("plots/original_under_sample_example.png", scale = 2)
 
+# plot matching new write up terms and colors
+both_dats |>
+  filter(value!= "not sampled",
+         b ==2, 
+         h == 0.00001) |>
+  mutate(value = case_when(
+    value == "sampled" ~ "Biased", 
+    .default = "Original"
+  ),
+  value = factor(value, 
+                levels = c("Original", "Biased"))) |>
+  ggplot(aes(x = x, 
+             fill = value)) +
+  geom_histogram(binwidth = 0.05, 
+                 position = "dodge",
+                 alpha = 0.75) +
+  scale_x_log10() +
+  scale_fill_manual(values = c("black", "#FF1984")) + 
+  theme_bw() +
+  guides(fill = guide_legend(title= "Data")) +
+  labs(x =expression(Log[10]~dry~mass)) 
+ggsave("plots/original_under_sample_example_new.png", scale = 2)
 
 
 x_pr_subsample <- function(

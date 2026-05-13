@@ -17,7 +17,8 @@ rep = 500
 
 beta_groups <- data.frame(
   group = rep(LETTERS[1:4], each = 3),
-  known_beta = rep(c(0, 0.1, 0.25, 0.5), each = 3),
+  known_beta = rep(c(0, -0.1, -0.25, -0.5),
+                   each = 3),
   known_lambda = c(-2, -2, -2, 
                    -1.9, -2, -2.1,
                    -1.75, -2, -2.25,
@@ -32,7 +33,7 @@ beta_groups <- data.frame(
 pr_scenarios <- data.frame(h = c(
   0.00001,
   0.01),
-  b = c(1.5),
+  b = c(2),
   pr_scenario = c("01", "04"))
 
 df <- tidyr::expand_grid(beta_groups,
@@ -48,7 +49,7 @@ df <- tidyr::expand_grid(beta_groups,
 
 # set up parallel processing
 #cores <- detectCores()-1 # when running on its own
-cores <- 7 # when running with other simulations
+cores <- 6 # when running with other simulations
 
 cluster <- makeCluster(cores)
 registerDoParallel(cluster)

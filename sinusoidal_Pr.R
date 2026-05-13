@@ -9,12 +9,13 @@ sample_pr <- function(x, h, b){
 # SI figures for sampling probability with simulation values
 library(tidyverse)
 library(sizeSpectra)
+library(poweRlaw)
 
 source("master_variable_designation.R")
 set.seed(2112)
+pr_scenarios
 dat <- expand_grid(
-  h = h,
-  b = c(1.5, 1.75, 2),
+  pr_scenarios,
   x = c(exp(seq(log(0.001), log(10), length.out = 1000)))) |>
 mutate(pr = sample_pr(x = x, h = h, b = b))
 
@@ -96,14 +97,14 @@ dat |>
 # make SI figures of "real" data and undersampling results
 
 # simulate x from bounded power law
+set.seed(2015)
 original_dat <- tibble(
   x = rPLB(5000, b = -2, xmin = xmin, xmax = xmax))
 
 # expand grid to include each variable combination with each body size
 sample_dat <- expand_grid(
   original_dat, 
-  h = h, 
-  b = b
+  pr_scenarios
 )
 
 # add sample probabilities as a function of x (body mass)
@@ -125,27 +126,37 @@ original_x <- original_dat |>
 both_dats <- left_join(sampled_dat, original_x, by = "x") |>
   pivot_longer(fill.x:fill.y)
 
-both_dats |>
-  filter(value!= "not sampled") |>
-  ggplot(aes(x = x, 
-             fill = value)) +
-  geom_histogram(binwidth = 0.1, 
-                 position = "dodge2") +
-  scale_x_log10() +
-  facet_wrap(b~h, labeller = label_both) +
-  scale_fill_manual(values = c("dodgerblue","black")) + 
-  theme_bw() +
-  guides(color = guide_legend(title= "Observation")) +
-  labs(title = "Undersampling a power law distribution",
-       x =expression(Log[10]~dry~mass),
-       caption = "Examples of how samples from a power law distribution (blue bars) are affected by different combinations of variables (facet titles) \nin the sampling probability equation, and how under sampled data (black bars) appears. \nUnder sampling is minor in top left and increases to extreme in the bottom right. Original N = 5000, \u03bb = -2")
-ggsave("plots/original_under_sample_example.png", scale = 2)
+# both_dats |>
+#   filter(value!= "not sampled") |>
+#   ggplot(aes(x = x, 
+#              fill = value)) +
+#   geom_histogram(binwidth = 0.1, 
+#                  position = "dodge2") +
+#   scale_x_log10() +
+#   facet_wrap(b~h, labeller = label_both) +
+#   scale_fill_manual(values = c("dodgerblue","black")) + 
+#   theme_bw() +
+#   guides(color = guide_legend(title= "Observation")) +
+#   labs(title = "Undersampling a power law distribution",
+#        x =expression(Log[10]~dry~mass),
+#        caption = "Examples of how samples from a power law distribution (blue bars) are affected by different combinations of variables (facet titles) \nin the sampling probability equation, and how under sampled data (black bars) appears. \nUnder sampling is minor in top left and increases to extreme in the bottom right. Original N = 5000, \u03bb = -2")
+# ggsave("plots/original_under_sample_example.png", scale = 2)
 
 # plot matching new write up terms and colors
+# estimate x_min for this scenario
+sampled_x <- both_dats |>
+  filter(value == "sampled",
+         b ==1.5, 
+         h == 0.0001) |>
+  pull(x)
+x_power <- conpl$new(sampled_x)
+x_xmin <- estimate_xmin(x_power)$xmin
+x_xmin
+
 both_dats |>
   filter(value!= "not sampled",
-         b ==2, 
-         h == 0.00001) |>
+         b ==1.5, 
+         h == 0.0001) |>
   mutate(value = case_when(
     value == "sampled" ~ "Biased", 
     .default = "Original"
@@ -158,6 +169,10 @@ both_dats |>
                  position = "dodge",
                  alpha = 0.75) +
   scale_x_log10() +
+  geom_segment(aes(x = x_xmin, y = 400, xend = x_xmin, yend = 200),
+               arrow = arrow(length = unit(0.5, "cm")),
+               linewidth = 2,
+               color = "dodgerblue") +
   scale_fill_manual(values = c("black", "#FF1984")) + 
   theme_bw() +
   guides(fill = guide_legend(title= "Data")) +

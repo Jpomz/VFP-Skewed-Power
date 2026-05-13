@@ -34,7 +34,7 @@ sub_lambda_df <- expand_grid(
 
 # set up parallel processing
 #cores <- detectCores()-1 # when running on its own
-cores <- 7 # when running with other simulations
+cores <- 6 # when running with other simulations
 
 cluster <- makeCluster(cores)
 registerDoParallel(cluster)

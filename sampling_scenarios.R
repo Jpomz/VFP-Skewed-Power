@@ -64,15 +64,15 @@ dat |>
 
 ## 4 scenarios on one plot
 dat |>
-  filter(scenario == 1 |
-           scenario == 4 |
-           scenario == 7 |
-           scenario == 10)|>
+  filter(scenario == 3 |
+           scenario == 6 |
+           scenario == 9 |
+           scenario == 12)|>
   mutate(scenario = case_when(
-    h == 0.00001 & b == 1.5 ~ "minimal",
-    h == 0.0001 & b == 1.5 ~ "moderate",
-    h == 0.001 & b == 1.5 ~ "strong",
-    h == 0.01 & b == 1.5 ~ "extreme",
+    h == 0.00001 & b == 2 ~ "minimal",
+    h == 0.0001 & b == 2 ~ "moderate",
+    h == 0.001 & b == 2 ~ "strong",
+    h == 0.01 & b == 2 ~ "extreme",
   ),
   scenario = factor(scenario, 
                        levels = c("minimal", "moderate", "strong", "extreme"))) |>

@@ -43,7 +43,7 @@ pr_dat |>
   geom_vline(aes(xintercept = 0.01), linetype = "dashed") +
   geom_hline(aes(yintercept = 0.9), linetype = "dashed") +
   scale_x_log10() +
-  theme_bw() +
+  theme_bw(base_size = 18) +
   labs(title = "Sampling probability as a function of body mass",
        x =expression(Log[10]~dry~mass),
        y = "Sampling probability") +
@@ -53,9 +53,9 @@ pr_dat |>
                                  "darkorchid4")) +
   NULL
 ggsave("plots/sample_pr_4_scenarios.png",
-       units = "px",
-       height = 1182,
-       width = 2228)
+       units = "in",
+       height = 4,
+       width = 8)
 
 ## 2 scenarios on one plot
 pr_dat |>
@@ -72,7 +72,7 @@ pr_dat |>
   geom_vline(aes(xintercept = 0.01), linetype = "dashed") +
   geom_hline(aes(yintercept = 0.9), linetype = "dashed") +
   scale_x_log10() +
-  theme_bw() +
+  theme_bw(base_size = 18) +
   labs(title = "Sampling probability as a function of body mass",
        x =expression(Log[10]~dry~mass),
        y = "Sampling probability") +
@@ -83,9 +83,9 @@ pr_dat |>
   )) +
   NULL
 ggsave("plots/sample_pr_2_scenarios.png",
-       units = "px",
-       height = 1182,
-       width = 2228)
+       units = "in",
+       height = 4,
+       width = 8)
 
 pr_dat |>
   filter(scenario == "minimal")|>
@@ -99,16 +99,16 @@ pr_dat |>
   geom_vline(aes(xintercept = 0.01), linetype = "dashed") +
   geom_hline(aes(yintercept = 0.9), linetype = "dashed") +
   scale_x_log10() +
-  theme_bw() +
+  theme_bw(base_size = 18) +
   labs(title = "Sampling probability as a function of body mass",
        x =expression(Log[10]~dry~mass),
        y = "Sampling probability") +
   scale_colour_manual(values = c("darkorchid1")) +
   NULL
 ggsave("plots/sample_pr_min_scenarios.png",
-       units = "px",
-       height = 1182,
-       width = 2228)
+       units = "in",
+       height = 4,
+       width = 8)
 
 pr_dat |>
   filter(scenario == "strong")|>
@@ -122,16 +122,16 @@ pr_dat |>
   geom_vline(aes(xintercept = 0.01), linetype = "dashed") +
   geom_hline(aes(yintercept = 0.9), linetype = "dashed") +
   scale_x_log10() +
-  theme_bw() +
+  theme_bw(base_size = 18) +
   labs(title = "Sampling probability as a function of body mass",
        x =expression(Log[10]~dry~mass),
        y = "Sampling probability") +
   scale_colour_manual(values = c("darkorchid1")) +
   NULL
 ggsave("plots/sample_pr_str_scenarios.png",
-       units = "px",
-       height = 1182,
-       width = 2228)
+       units = "in",
+       height = 4,
+       width = 8)
 
 
 
@@ -221,14 +221,14 @@ both_dats |>
                linewidth = 2,
                color = "dodgerblue") +
   scale_fill_manual(values = c("black", "#FF1984")) + 
-  theme_bw() +
+  theme_bw(base_size = 18) +
   guides(fill = guide_legend(title= "Data")) +
   labs(x =expression(Log[10]~dry~mass)) 
   
 ggsave("plots/orig_bias_xmin_sfs.png",
-       units = "px",
-       height = 1182,
-       width = 2228)
+       units = "in",
+       height = 4,
+       width = 8)
 
 # minimal bias estimate
 bias_min <- calcLike(
@@ -315,17 +315,17 @@ plot_dat |>
              linetype = "dashed") +
   scale_fill_manual(values = c(c("#FF1984",
                                  "#019AFF"))) +
-  facet_grid(known_lambda~`Bias level`,
+  facet_grid(`Bias level`~known_lambda,
              scales = "free",
              labeller = labeller(
-               `Bias level` = label_both,
-               known_lambda = label_value(""))) +
-  theme_bw() +
+               `Bias level` = label_value,
+               known_lambda = label_value)) +
+  theme_bw(base_size = 18) +
   labs(x = "\u03bb estimate",
        y = "density",
        fill = "Data source"
   )
-ggsave("plots/lambda_ests_sfs.png",
-       units = "px",
-       height = 1182,
-       width = 2228)
+ggsave("plots/lambda_ests_sfs2.png",
+       units = "in",
+       height = 6,
+       width = 10)

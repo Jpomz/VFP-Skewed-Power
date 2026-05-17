@@ -92,7 +92,55 @@ dat |>
                                  "darkorchid3",
                                  "darkorchid4")) +
   NULL
-ggsave("plots/sample_pr_4_scenarios.png")
+ggsave("plots/sample_pr_4_scenarios.png",
+       units = "px",
+       height = 1182,
+       width = 2228)
+
+## 2 scenarios on one plot
+dat |>
+  filter(scenario == 3 |
+           #scenario == 6 |
+           scenario == 9 #|
+           #scenario == 12
+           )|>
+  mutate(scenario = case_when(
+    h == 0.00001 & b == 2 ~ "minimal",
+    #h == 0.0001 & b == 2 ~ "moderate",
+    h == 0.001 & b == 2 ~ "strong",
+    #h == 0.01 & b == 2 ~ "extreme",
+  ),
+  scenario = factor(scenario, 
+                    levels = c(
+                      "minimal", 
+                      #"moderate",
+                      "strong"#,
+                      #"extreme"
+                      ))) |>
+  ggplot(aes(x = x, 
+             y = pr, 
+             color = scenario)) +
+  geom_line(linewidth = 1.5) +
+  geom_vline(aes(xintercept = 0.01), linetype = "dashed") +
+  geom_hline(aes(yintercept = 0.9), linetype = "dashed") +
+  scale_x_log10() +
+  theme_bw() +
+  labs(title = "Sampling probability as a function of body mass",
+       x =expression(Log[10]~dry~mass),
+       y = "Sampling probability") +
+  scale_colour_manual(values = c("darkorchid1",
+                                 #"darkorchid2",
+                                 "darkorchid3"#,
+                                 #"darkorchid4"
+                                 )) +
+  NULL
+ggsave("plots/sample_pr_2_scenarios.png",
+       units = "px",
+       height = 1182,
+       width = 2228)
+
+
+
 
 # steeper b?
 # didn't end up going with this...

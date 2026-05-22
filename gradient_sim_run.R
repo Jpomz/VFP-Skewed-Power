@@ -1,5 +1,7 @@
 # undersampling gradient simulation
 
+# source("gradient_sim_run.R")
+
 # this script samples body sizes from bounded power law with known lambda
 # lambdas chnage across a hypothetical gradient
 # biases data according to 2 sampling probabilities (minimal and extreme)
@@ -12,50 +14,52 @@ library(doParallel)
 
 # source the custom functions written for this simulation study
 source("custom_functions.R")
+source("master_variable_designation.R")
 
-rep = 500
+rep = n_iter
 
 beta_groups <- data.frame(
-  group = rep(LETTERS[1:4], each = 3),
+  group = rep(LETTERS[1:4], each = 5),
   known_beta = rep(c(0, -0.1, -0.25, -0.5),
-                   each = 3),
-  known_lambda = c(-2, -2, -2, 
-                   -1.9, -2, -2.1,
-                   -1.75, -2, -2.25,
-                   -1.5, -2, -2.5 ),
-  env_gradient = rep(c(-1, 0, 1), 4),
-  xmin = 0.001, 
-  xmax = 100,
-  vecDiff = 2)
+                   each = 5),
+  known_lambda = c(-2, -2, -2, -2, -2, 
+                   -1.9, -1.95, -2, -2.05, -2.1,
+                   -1.75, -1.875, -2, -2.125, -2.25,
+                   -1.5, -1.75, -2, -2.25, -2.5 ),
+  env_gradient = rep(c(-1, -0.5, 0, 0.5, 1), 4),
+  xmin = xmin, 
+  xmax = xmax,
+  vecDiff = vecDiff)
 
 # beta_groups
-
-pr_scenarios <- data.frame(h = c(
-  0.00001,
-  0.01),
-  b = c(2),
-  pr_scenario = c("01", "04"))
+pr_scenarios
+# pr_scenarios <- data.frame(h = c(
+#   0.00001,
+#   0.01),
+#   b = c(2),
+#   pr_scenario = c("01", "04"))
 
 df <- tidyr::expand_grid(beta_groups,
                   pr_scenarios,
                   rep = 1:rep,
-                  n = c(500, 1000, 5000))
+                  n = n)
 # 4 betas
-# 3 lambdas
-# 2 scenarios
+# 5 lambdas
+# 4 scenarios
 # 3 n's
-# 2 reps
-4*3*2*3*2
+# 500 reps
+# 120 000 simulations
+4*5*4*3*500
 
 # set up parallel processing
-#cores <- detectCores()-1 # when running on its own
-cores <- 6 # when running with other simulations
+cores <- detectCores()-1 # when running on its own
+#cores <- 7 # when running with other simulations
 
 cluster <- makeCluster(cores)
 registerDoParallel(cluster)
 
 
-{tictoc::tic()
+tictoc::tic()
 results <- foreach(j = 1:nrow(df), 
                    .combine = rbind,
                    .errorhandling = "remove",
@@ -84,12 +88,13 @@ results <- foreach(j = 1:nrow(df),
                                    df_out
                                  }
 #results
-tictoc::toc()}
 stopCluster(cl = cluster)
 # 24 rows = 15.77 seconds
 # 240 rows = 156 seconds
 # 144 rows = 65
+end <- tictoc::toc()
+run <- end$callback_msg
+saveRDS(run, paste0("simulation_results/gradient_run_time_s_", Sys.Date(), ".rds"))
+
 # results
-
-
 saveRDS(results, "simulation_results/gradient_sim_run.rds")

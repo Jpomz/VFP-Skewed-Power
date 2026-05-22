@@ -15,8 +15,7 @@ sim |>
   ungroup() |>
   summarize(sum(runs)/18000)
 # 36 original parameter sets and 500 reps = 18,000
-# 17,890 / 18,000 = 99.39% of reps successful
-
+# 
 sim |>
   summarize(min_xmax_obs = min(xmax_obs),
             mean_xmax_obs = mean(xmax_obs),
@@ -34,7 +33,8 @@ sim |>
 ggplot(sim, 
        aes(x = original_n,
            y = under_n)) +
-  geom_point(position = position_jitter(width = 500))
+  geom_point(position = position_jitter(width = 500)) +
+  facet_wrap(known_lambda~pr_scenario)
 
 # distribution of lambda estimates (not including CIs)
 sim |>
@@ -205,18 +205,20 @@ sim |>
   mutate(id = cur_group_id(),
          color = lambda_trimmed_lo < known_lambda & lambda_trimmed_hi > known_lambda) |>
   ungroup() |>
-  group_by(known_lambda, h, b, original_n) |>
+  group_by(known_lambda,
+           pr_scenario,
+           original_n) |>
   summarize(ci_true = mean(color),
             ci_sd = sd(color)) |>
   ggplot(aes(x = original_n,
              y = ci_true, 
              ymin = ci_true - ci_sd, 
              ymax = ci_true + ci_sd,
-             color = interaction(h, b))) +
+             color = pr_scenario)) +
   geom_pointrange(
     position = position_dodge(width = 1000)
   )+
-  facet_wrap(.~known_lambda) +
+  facet_grid(pr_scenario~known_lambda) +
   scale_color_viridis_d(option = "plasma")
 
 
@@ -269,3 +271,132 @@ sim |>
             mean_xmin = round(mean(est_xmin), 3),
             sd_xmin = round(sd(est_xmin),4)) |>
     write_csv("simulation_summaries/est_xmin.csv")  
+
+# bias tables
+sim |>
+  filter(original_n == 5000) |>
+  mutate(deviation_under = known_lambda - lambda_under,
+         deviation_trimmed = known_lambda - lambda_trimmed) |>
+  group_by(pr_scenario, known_lambda) |>
+  summarize(med_dev_und = median(deviation_under), 
+            med_dev_tri = median(deviation_trimmed))
+
+under <- sim |>
+  select(known_lambda:lambda_under_hi, 
+         original_n,
+         pr_scenario,
+         rep)|>
+  rename(est = lambda_under,
+         minCI = lambda_under_lo,
+         maxCI = lambda_under_hi) |>
+  mutate(data_source = "bias")
+trimmed <- sim |>
+  select(known_lambda,
+         lambda_trimmed:lambda_trimmed_hi, 
+         original_n,
+         pr_scenario,
+         rep) |>
+  rename(est = lambda_trimmed,
+         minCI = lambda_trimmed_lo,
+         maxCI = lambda_trimmed_hi)|>
+  mutate(data_source = "censored")
+
+long_dat <- bind_rows(
+  under, 
+  trimmed
+)
+
+lambda_bias <- long_dat|>
+  mutate(conf_width = maxCI - minCI,
+         diff = est - known_lambda,
+         abs_bias = abs(diff)) |>
+  group_by(known_lambda, 
+           original_n, 
+           pr_scenario, 
+           data_source) |>
+  add_count() |>
+  #group_by(target_name, name, n) %>%
+  summarize(median_ci_range = median(conf_width),
+            median_abs_bias = median(abs_bias),
+            sd_abs_bias = sd(abs_bias)) |>
+  arrange(original_n,
+          known_lambda,
+          pr_scenario,
+          data_source) 
+write_csv(lambda_bias, 
+          "simulation_summaries/bias_table.csv")
+
+lambda_ci_prop <- long_dat %>%
+  mutate(in_ci = known_lambda > minCI & known_lambda < maxCI) %>%
+  na.omit() %>%
+  group_by(known_lambda,
+           original_n,
+           pr_scenario,
+           data_source) %>%
+  summarize(count = n(),
+            proportion = sum(in_ci, na.rm = TRUE) / count) 
+write_csv(lambda_ci_prop, 
+          "simulation_summaries/lambda_ci_table.csv")
+
+lambda_ci_prop |>
+  filter(proportion<0.1) |>
+  group_by(data_source, pr_scenario, original_n) |>
+  count()
+
+lambda_ci_prop |>
+  filter(proportion>0.1) |>
+  group_by(data_source, pr_scenario, original_n) |>
+  count()
+
+lambda_ci_prop |>
+  group_by(pr_scenario) |>
+  summarise(mean(proportion))
+lambda_ci_prop |>
+  group_by(known_lambda) |>
+  summarise(mean(proportion))
+lambda_ci_prop |>
+  group_by(original_n) |>
+  summarise(mean(proportion))
+lambda_ci_prop |>
+  group_by(data_source) |>
+  summarise(mean(proportion))
+
+lambda_ci_prop |>
+  group_by(data_source, 
+           pr_scenario) |>
+  summarise(mean(proportion))
+
+lambda_ci_prop |>
+  group_by(data_source, 
+           pr_scenario,
+           known_lambda) |>
+  summarise(mean(proportion))
+
+
+lambda_bias |>
+  group_by(pr_scenario) |>
+  summarise(mean(median_ci_range))
+lambda_bias |>
+  group_by(known_lambda) |>
+  summarise(mean(median_ci_range))
+lambda_bias |>
+  group_by(original_n) |>
+  summarise(mean(median_ci_range))
+lambda_bias |>
+  group_by(data_source) |>
+  summarise(mean(median_ci_range))
+
+
+lambda_bias |>
+  group_by(pr_scenario) |>
+  summarise(mean(median_abs_bias))
+lambda_bias |>
+  group_by(known_lambda) |>
+  summarise(mean(median_abs_bias))
+lambda_bias |>
+  group_by(original_n) |>
+  summarise(mean(median_abs_bias))
+lambda_bias |>
+  group_by(data_source) |>
+  summarise(mean(median_abs_bias))
+

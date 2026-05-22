@@ -28,13 +28,16 @@ sub_lambda_df <- expand_grid(
   xmax = xmax,
   vecDiff = vecDiff,
   pr_scenarios)
+36 * 500
+
 # for working out issues
 # sub_lambda_df <- sub_lambda_df |>
 #   sample_n(10)
 
+
 # set up parallel processing
-#cores <- detectCores()-1 # when running on its own
-cores <- 6 # when running with other simulations
+cores <- detectCores()-1 # when running on its own
+#cores <- 6 # when running with other simulations
 
 cluster <- makeCluster(cores)
 registerDoParallel(cluster)
@@ -87,36 +90,13 @@ results <- foreach(j = 1:nrow(sub_lambda_df),
     df_out$rep <- sub_lambda_df[j,]$rep
     df_out
                                  }
-#results
-tictoc::toc()
-
-
-# old dopar solution
-# I think this was "removing" the whole rep even if only one set of parameter values had an error in it
-# i.e., results always had equal counts of reps (1 per parameter set) but not all reps were included
-
-# tictoc::tic()
-# results <- foreach(j = 1:n_iter, 
-#                    .combine = rbind,
-#                    .errorhandling = "remove",
-#                    .packages = c("sizeSpectra",
-#                                  "tidyverse",
-#                                  "poweRlaw")) %dopar%{
-#                      df_out <- parallel_rep_sub_lambda(df = sub_lambda_df)
-#                      df_out$rep <- j
-#                      #results[[j]] <- 
-#                      df_out
-#                                  }
-# results
-# tictoc::toc()
-
+# stop cluster
 stopCluster(cl = cluster)
+# run time
 end <- tictoc::toc()
 run <- end$callback_msg
 saveRDS(run, paste0("simulation_results/sim_run_time_s_", Sys.Date(), ".rds"))
 
-
-#result_df <- bind_rows(results)
-
+# save results
 saveRDS(results, "simulation_results/undersampling_sim_run.rds")
 

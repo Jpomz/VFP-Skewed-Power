@@ -74,6 +74,7 @@ dat |>
   labs(title = "Sampling probability as a function of body mass",
        x =expression(Log[10]~dry~mass),
        y = "Sampling probability") 
+
 ggsave("plots/bias_scenarios_MS.png",
        units = "px",
        height = 1182,

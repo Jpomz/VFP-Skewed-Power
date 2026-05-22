@@ -1,4 +1,4 @@
-# function for sinusoidal response of sampling probabilility
+# Plots showing sampling probablity function and examples
 
 # function ####
 sample_pr <- function(x, h, b){
@@ -20,62 +20,13 @@ dat <- expand_grid(
 mutate(pr = sample_pr(x = x, h = h, b = b))
 
 
-# figure out new h and b values
-dat |>
-  group_by(h, b) |>
-  mutate(scenario = cur_group_id()) |>
-  filter(scenario == 1 |
-           scenario == 2 |
-           scenario == 5 |
-           scenario == 6) |>
-  ggplot(aes(x = x, 
-             y = pr, 
-             color = as.factor(scenario))) +
-  geom_line(linewidth = 2) +
-  geom_vline(aes(xintercept = 0.005), linetype = "dashed") +
-  geom_hline(aes(yintercept = 0.9), linetype = "dashed") +
-  scale_x_log10() +
-  theme_bw() +
-  labs(title = "Sampling probability as a function of body mass",
-       x =expression(Log[10]~dry~mass),
-       y = "Sampling probability")
-
-dat |>
-  group_by(h, b) |>
-  mutate(scenario = cur_group_id()) |>
-  filter(scenario == 1 |
-           scenario == 4 |
-           scenario == 5 |
-           scenario == 6) |>
-  distinct(h, b, scenario) |>
-  arrange(scenario)
-
-dat |>
-  ggplot(aes(x = x, 
-             y = pr, 
-             color = as.factor(h))) +
-  geom_point() +
-  geom_vline(aes(xintercept = 0.005), linetype = "dashed") +
-  geom_hline(aes(yintercept = 0.9), linetype = "dashed") +
-  scale_x_log10() +
-  facet_wrap(b~., labeller = label_both) +
-  theme_bw() +
-  guides(color = guide_legend(title= "h")) +
-  labs(title = "Sampling probability as a function of body mass",
-       x =expression(Log[10]~dry~mass),
-       y = "Sampling probability",
-       caption = "The horizontal dashed line represents a 90% sampling probability for reference. The vertical line shows an individual of 0.1 mg dry mass. \nDashed lines are chosen arbritarily for illustrative purposes.")
-
-ggsave("plots/sampling_probability.png", scale = 2)
-
-
 ## 4 scenarios on one plot
 dat |>
   mutate(scenario = case_when(
     h == 0.00001 & b == 1.5 ~ "minimal",
     h == 0.0001 & b == 1.5 ~ "moderate",
-    h == 0.00001 & b == 2 ~ "strong",
-    h == 0.0001 & b == 2 ~ "extreme",
+    h == 0.001 & b == 1.5 ~ "strong",
+    h == 0.01 & b == 1.5 ~ "extreme",
   ),
   scenario = factor(scenario, 
                        levels = c("minimal", "moderate", "strong", "extreme"))) |>
@@ -83,29 +34,48 @@ dat |>
              y = pr, 
              color = scenario)) +
   geom_line(linewidth = 2) +
-  geom_vline(aes(xintercept = 0.005), linetype = "dashed") +
+  geom_vline(aes(xintercept = 0.01), linetype = "dashed") +
   geom_hline(aes(yintercept = 0.9), linetype = "dashed") +
   scale_x_log10() +
   theme_bw() +
+  scale_colour_manual(values = c("darkorchid1",
+                                 "darkorchid2",
+                                 "darkorchid3",
+                                 "darkorchid4"),
+                      name = "Bias") +
   labs(title = "Sampling probability as a function of body mass",
        x =expression(Log[10]~dry~mass),
        y = "Sampling probability") +
-  lims(x = c(exp(log(0.001)), exp(log(.1))))
+  guides(x = "axis_logticks")
+
+ggsave("plots/bias_scenarios_MS.png",
+       units = "in",
+       height = 4,
+       width = 6.5)
 
 
 # Example of undersampling ####
 # make SI figures of "real" data and undersampling results
 
 # simulate x from bounded power law
-set.seed(2015)
+set.seed(205)
+xmin = 0.001
+xmax = 100
 original_dat <- tibble(
-  x = rPLB(5000, b = -2, xmin = xmin, xmax = xmax))
+  x = rPLB(5000,
+           b = -2,
+           xmin = xmin,
+           xmax = xmax))
 
 # expand grid to include each variable combination with each body size
 sample_dat <- expand_grid(
   original_dat, 
-  pr_scenarios
-)
+  h = c(0.00001, 0.01),
+  b = 1.5) |>
+  mutate(scenario = 
+           case_when(
+             h == 0.00001 & b == 1.5 ~ "minimal",
+             h == 0.01 & b == 1.5 ~ "extreme"))
 
 # add sample probabilities as a function of x (body mass)
 sampled_dat <- sample_dat |> 
@@ -126,60 +96,68 @@ original_x <- original_dat |>
 both_dats <- left_join(sampled_dat, original_x, by = "x") |>
   pivot_longer(fill.x:fill.y)
 
-# both_dats |>
-#   filter(value!= "not sampled") |>
-#   ggplot(aes(x = x, 
-#              fill = value)) +
-#   geom_histogram(binwidth = 0.1, 
-#                  position = "dodge2") +
-#   scale_x_log10() +
-#   facet_wrap(b~h, labeller = label_both) +
-#   scale_fill_manual(values = c("dodgerblue","black")) + 
-#   theme_bw() +
-#   guides(color = guide_legend(title= "Observation")) +
-#   labs(title = "Undersampling a power law distribution",
-#        x =expression(Log[10]~dry~mass),
-#        caption = "Examples of how samples from a power law distribution (blue bars) are affected by different combinations of variables (facet titles) \nin the sampling probability equation, and how under sampled data (black bars) appears. \nUnder sampling is minor in top left and increases to extreme in the bottom right. Original N = 5000, \u03bb = -2")
-# ggsave("plots/original_under_sample_example.png", scale = 2)
 
 # plot matching new write up terms and colors
 # estimate x_min for this scenario
-sampled_x <- both_dats |>
+sampled_x_min <- both_dats |>
   filter(value == "sampled",
-         b ==1.5, 
-         h == 0.0001) |>
+         scenario == "minimal") |>
   pull(x)
-x_power <- conpl$new(sampled_x)
-x_xmin <- estimate_xmin(x_power)$xmin
-x_xmin
+x_power_min <- conpl$new(sampled_x_min)
+x_xmin_min <- estimate_xmin(x_power_min)$xmin
+x_xmin_min
+# strong
+sampled_x_str <- both_dats |>
+  filter(value == "sampled",
+         scenario == "extreme") |>
+  pull(x)
+x_power_str <- conpl$new(sampled_x_str)
+x_xmin_str <- estimate_xmin(x_power_str)$xmin
+x_xmin_str
 
 both_dats |>
-  filter(value!= "not sampled",
-         b ==1.5, 
-         h == 0.0001) |>
+  mutate(x_min = case_when(
+    scenario == "minimal" ~ 0.00279,
+    scenario == "extreme" ~ 0.05501
+  )) |>
+  filter(value!= "not sampled") |>
   mutate(value = case_when(
     value == "sampled" ~ "Biased", 
     .default = "Original"
   ),
   value = factor(value, 
-                levels = c("Original", "Biased"))) |>
+                 levels = c("Original", "Biased")),
+  scenario = factor(scenario,
+                    levels = c("minimal", 
+                               "extreme"))) |>
   ggplot(aes(x = x, 
              fill = value)) +
   geom_histogram(binwidth = 0.05, 
                  position = "dodge",
                  alpha = 0.75) +
   scale_x_log10() +
-  geom_segment(aes(x = x_xmin, y = 400, xend = x_xmin, yend = 200),
-               arrow = arrow(length = unit(0.5, "cm")),
-               linewidth = 2,
+  facet_wrap(~scenario) +
+  geom_segment(aes(x = x_min,
+                   y = 550,
+                   xend = x_min,
+                   yend = 450),
+               arrow = arrow(length = unit(0.25, "cm")),
+               linewidth = 1.5,
                color = "dodgerblue") +
   scale_fill_manual(values = c("black", "#FF1984")) + 
-  theme_bw() +
+  theme_bw(base_size = 18) +
   guides(fill = guide_legend(title= "Data")) +
-  labs(x =expression(Log[10]~dry~mass)) 
-ggsave("plots/original_under_sample_example_new.png", scale = 2)
+  labs(x =expression(Log[10]~dry~mass)) +
+  guides(x = "axis_logticks")
+
+ggsave("plots/orig_bias_xmin_SI.png",
+       units = "in",
+       height = 4,
+       width = 8)
 
 
+
+### Move this to the summary script
 x_pr_subsample <- function(
     df
     #N_orig,

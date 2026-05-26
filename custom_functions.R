@@ -176,9 +176,103 @@ plot_sub_lambda <- function(
     h = h, 
     b = b,
     xmin_obs = xmin_obs,
+    xmin_under = min(x_under_vector),
+    xmin_trimmed = min(x_trimmed_vector),
     xmax_obs = xmax_obs)
   return(out_df)
 }
+
+fixed_cut_lambda <- function(
+    n = 5000, 
+    lambda = -2,
+    xmin = 0.01, 
+    xmax = 100,
+    cutoff = 0.001,
+    h = 0.001, 
+    b = 2.5, 
+    vecDiff = 2){
+  # sample from bounded power law
+  x <- rPLB(n = n, b = lambda, xmin = xmin, xmax = xmax)
+  xmin_obs = min(x)
+  xmax_obs = max(x)
+  # make a df with the sample probability and not/sampled columns
+  x_df <- x |> 
+    tibble() |>
+    mutate(pr = sample_pr(
+      x, 
+      h = h, 
+      b = b
+    ), 
+    sampled = rbinom(n(), 1, prob = pr),
+    fill = case_when(sampled == 1 ~ "sampled", 
+                     .default = "not sampled"))
+  
+  # under sampled ####
+  # filter out the "sampled" data
+  # this represents empirical data which has fewer little things than expected
+  x_under <- x_df |>
+    filter(fill == "sampled")
+  # how many body sizes were sampled?
+  under_n <- nrow(x_under)
+  
+  # cutoff x_min ####
+  
+  # add estimated x_min to data frames
+  x_df$cutoff <- cutoff
+  x_under$cutoff <- cutoff
+  
+  # lambdas ####
+  # lambda under ####
+  # estimate lambda from undersampled data
+  x_under_vector <- x_under$x
+  lambda_under <- calcLike(negLL.fn = negLL.PLB,
+                           x = x_under_vector,
+                           xmin = min(x_under_vector), 
+                           xmax = max(x_under_vector), 
+                           n = length(x_under_vector), 
+                           sumlogx = sum(log(x_under_vector)), 
+                           p = -1.5,
+                           suppress.warnings = TRUE,
+                           vecDiff = vecDiff)
+  
+  # lambda trimmed ####
+  # estimate lambda from trimmed data
+  x_trimmed_vector <- x_under |>
+    filter(x >= cutoff) |>
+    pull(x)
+  trimmed_n <- length(x_trimmed_vector)
+  lambda_trimmed <- calcLike(negLL.fn = negLL.PLB,
+                             x = x_trimmed_vector,
+                             xmin = min(x_trimmed_vector), 
+                             xmax = max(x_trimmed_vector), 
+                             n = length(x_trimmed_vector), 
+                             sumlogx = sum(log(x_trimmed_vector)), 
+                             p = -1.5,
+                             suppress.warnings = TRUE,
+                             vecDiff = 2)
+  # end/return ####
+  # return data frame ####
+  out_df <- data.frame(
+    known_lambda = lambda, 
+    lambda_under = lambda_under$MLE,
+    lambda_under_lo = lambda_under$conf[1],
+    lambda_under_hi = lambda_under$conf[2],
+    lambda_trimmed = lambda_trimmed$MLE,
+    lambda_trimmed_lo = lambda_trimmed$conf[1],
+    lambda_trimmed_hi = lambda_trimmed$conf[2],
+    original_n = n,
+    under_n = under_n,
+    trimmed_n = trimmed_n,
+    cutoff = cutoff, 
+    h = h, 
+    b = b,
+    xmin_obs = xmin_obs,
+    xmin_under = min(x_under_vector),
+    xmin_trimmed = min(x_trimmed_vector),
+    xmax_obs = xmax_obs)
+  return(out_df)
+}
+
 
 
 # parallel_rep_sub_lambda ####

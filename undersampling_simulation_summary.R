@@ -15,7 +15,7 @@ sim |>
   ungroup() |>
   summarize(sum(runs)/18000)
 # 36 original parameter sets and 500 reps = 18,000
-# 
+# ~98.7% of the runs were successful. 
 sim |>
   summarize(min_xmax_obs = min(xmax_obs),
             mean_xmax_obs = mean(xmax_obs),
@@ -37,57 +37,71 @@ ggplot(sim,
   facet_wrap(known_lambda~pr_scenario)
 
 # distribution of lambda estimates (not including CIs)
-sim |>
-  as_tibble() |>
-  filter(original_n == 5000,
-         known_lambda == -2) |>
-  select(b, h, known_lambda, lambda_under, lambda_trimmed, original_n) |>
+dat <- sim |>
+  filter(original_n == 1000,
+         pr_scenario == "01" | pr_scenario == "04")
+
+plot_dat <- dat |>
+  select(-lambda_under_lo, -lambda_under_hi) |>
   rename(`Biased` = lambda_under,
-         `Censored` = lambda_trimmed) |>
+         `Censored` = lambda_trimmed,
+         `Bias level` = pr_scenario) |>
+  mutate(`Bias level` = case_when(
+    `Bias level` == "01" ~ "Minimal",
+    `Bias level` == "04" ~ "Extreme")) |>
   pivot_longer(`Biased`:`Censored`) |>
+  mutate(
+         `Bias level` = factor(`Bias level`, 
+                               levels = c("Minimal",
+                                          "Extreme")))
+
+plot_dat |>
+  filter(`Bias level` == "Minimal") |>
   ggplot(aes(x = value, 
              fill = name)) +
-  stat_halfeye(alpha = 0.6) +
+  stat_halfeye(alpha = 0.9,
+               normalize = "panels") +
   geom_vline(aes(xintercept = known_lambda),
              linetype = "dashed") +
   scale_fill_manual(values = c(c("#FF1984",
                                  "#019AFF"))) +
-  facet_wrap(b ~ h,
-             #scales = "free_x",
-             labeller = label_both) +
-  theme_bw() +
+  facet_grid(`Bias level`~known_lambda,
+             scales = "free",
+             labeller = labeller(
+               `Bias level` = label_value,
+               known_lambda = label_value)) +
+  theme_bw(base_size = 18) +
   labs(x = "\u03bb estimate",
-       y = "density"#,
-       # caption = "Distribution of \u03bb estimates for under sampled (blue) and data which has been trimmed at the estimated x_min (pink). \nFacet titles show variables for undersampling function and the number of data points in the under sampled data \nincreases from left to right and top to bottom. Dashed line shows the known value of \u03bb"
-       )
+       y = "density",
+       fill = "Data source")
+ggsave("plots/lambda_ests_minimal_MS.png",
+       units = "in",
+       height = 6,
+       width = 10)
 
-
-# distribution of lambda estimates (not including CIs)
-sim |>
-  as_tibble() |>
-  filter(original_n == 5000,
-         known_lambda == -2) |>
-  select(b, h, known_lambda, lambda_under, lambda_trimmed, original_n) |>
-  rename(`Biased` = lambda_under,
-         `Censored` = lambda_trimmed) |>
-  pivot_longer(`Biased`:`Censored`) |>
+plot_dat |>
+  filter(`Bias level` == "Extreme") |>
   ggplot(aes(x = value, 
              fill = name)) +
-  stat_halfeye(alpha = 0.6) +
+  stat_halfeye(alpha = 0.9,
+               normalize = "panels") +
   geom_vline(aes(xintercept = known_lambda),
              linetype = "dashed") +
   scale_fill_manual(values = c(c("#FF1984",
                                  "#019AFF"))) +
-  facet_wrap(b ~ h,
-             #scales = "free_x",
-             labeller = label_both) +
-  theme_bw() +
+  facet_grid(`Bias level`~known_lambda,
+             scales = "free",
+             labeller = labeller(
+               `Bias level` = label_value,
+               known_lambda = label_value)) +
+  theme_bw(base_size = 18) +
   labs(x = "\u03bb estimate",
-       y = "density"#,
-       # caption = "Distribution of \u03bb estimates for under sampled (blue) and data which has been trimmed at the estimated x_min (pink). \nFacet titles show variables for undersampling function and the number of data points in the under sampled data \nincreases from left to right and top to bottom. Dashed line shows the known value of \u03bb"
-       )
-ggsave("plots/under_trimmed_estimates_lambda_2.png", 
-       scale = 2)
+       y = "density",
+       fill = "Data source")
+ggsave("plots/lambda_ests_extreme_MS.png",
+       units = "in",
+       height = 6,
+       width = 10)
   
 
 # proportion of samples
@@ -114,13 +128,22 @@ sim |>
 
 set.seed(112)
 sim |>
-  filter(original_n == 5000,
-         known_lambda == -2) |>
-  group_by(pr_scenario) |>
-  sample_n(100) |>
+  filter(original_n == 1000,
+         pr_scenario == "01" |
+         pr_scenario == "04",
+         rep %in% 1:200) |>
+  mutate(`Bias level` = case_when(
+    pr_scenario == "01" ~ "Minimal",
+    pr_scenario == "04" ~ "Extreme"),
+    `Bias level` = factor(`Bias level`,
+                          levels = c("Minimal",
+                                     "Extreme"))) |>
+  group_by(`Bias level`,
+           known_lambda) |>
+  #sample_n(10) |>
   arrange(lambda_under_lo) |>
-  group_by(known_lambda, lambda_under_lo) |>
-  mutate(id = cur_group_id(),
+  #group_by(known_lambda, lambda_under_lo) |>
+  mutate(id = 1:n(),
          color = lambda_under_lo < known_lambda & lambda_under_hi > known_lambda) |>
   ggplot(aes(y = id,
              x = lambda_under,
@@ -130,11 +153,10 @@ sim |>
   geom_pointrange(
     position = position_jitter(height = 0.05)) +
   #geom_vline(aes(xintercept = known_lambda)) +
-  facet_wrap(b~h,
-             scales = "free",
-             labeller = label_both) +
+  facet_grid(`Bias level`~known_lambda,
+             scales = "free") +
   theme_bw() +
-  geom_vline(aes(xintercept = -2),
+  geom_vline(aes(xintercept = known_lambda),
              linetype = "dashed") +
   scale_color_viridis_d(option = "plasma") +
   guides(
@@ -147,54 +169,65 @@ sim |>
     axis.text.y = element_blank(),
     axis.ticks.y = element_blank()
   )
-ggsave("plots/ci_under_lambda_2.png", width = 9, height = 4.5)
+ggsave("plots/ci_under_lambda_SI.png", width = 9, height = 4.5)
 
 # CI plot color if lambda is in or out
 set.seed(112)
 sim |>
-  filter(original_n == 5000,
-         known_lambda == -2) |>
-  group_by(pr_scenario) |>
-  sample_n(100) |>
+  filter(original_n == 1000,
+         pr_scenario == "01" |
+           pr_scenario == "04",
+         rep %in% 1:200) |>
+  mutate(`Bias level` = case_when(
+    pr_scenario == "01" ~ "Minimal",
+    pr_scenario == "04" ~ "Extreme"),
+    `Bias level` = factor(`Bias level`,
+                          levels = c("Minimal",
+                                     "Extreme"))) |>
+  group_by(`Bias level`,
+           known_lambda) |>
+  #sample_n(10) |>
   arrange(lambda_trimmed_lo) |>
-  group_by(known_lambda, h, lambda_trimmed_lo) |>
-  mutate(id = cur_group_id(),
+  #group_by(known_lambda, lambda_under_lo) |>
+  mutate(id = 1:n(),
          color = lambda_trimmed_lo < known_lambda & lambda_trimmed_hi > known_lambda) |>
   ggplot(aes(y = id,
              x = lambda_trimmed,
              xmin = lambda_trimmed_lo,
              xmax = lambda_trimmed_hi,
              color = color)) +
-  geom_pointrange(position = position_jitter(height = 0.05)) +
+  geom_pointrange(
+    position = position_jitter(height = 0.05)) +
+  #geom_vline(aes(xintercept = known_lambda)) +
+  facet_grid(`Bias level`~known_lambda,
+             scales = "free") +
+  theme_bw() +
   geom_vline(aes(xintercept = known_lambda),
              linetype = "dashed") +
-  facet_wrap(b~h,
-             scales = "free",
-             labeller = label_both)+
-  theme_bw() +
-  scale_color_viridis_d(option = "plasma", end = 0.75) +
+  scale_color_viridis_d(option = "plasma") +
   guides(
     color = guide_legend(
       title= "\u03bb in 95% CI?")) +
-  labs(x = "Censored \u03bb estimate") +
+  labs(x = "Biased \u03bb estimate",
+       y = "") +
   theme(
     axis.title.y = element_blank(),
     axis.text.y = element_blank(),
     axis.ticks.y = element_blank()
   )
-ggsave("plots/ci_trimmed_lambda_2.png",
-       width = 9, height = 4.5)
+ggsave("plots/ci_trimmed_lambda_SI.png", width = 9, height = 4.5)
 
 # proportion of trimmed CIs with known lambda
 sim |>
-  filter(original_n == 5000) |>
+  filter(original_n == 1000) |>
   arrange(lambda_trimmed_lo) |>
   group_by(known_lambda, h, lambda_trimmed_lo) |>
   mutate(id = cur_group_id(),
          color = lambda_trimmed_lo < known_lambda & lambda_trimmed_hi > known_lambda) |>
   ungroup() |>
-  group_by(known_lambda, h, b, original_n) |>
+  group_by(known_lambda, pr_scenario) |>
   summarize(ci_true = sum(color) / n()) |>
+  arrange(ci_true) |>
   print(n = 36)
 
 # plot of proportion of ci with lambda
@@ -229,9 +262,8 @@ sim |>
              fill = as.factor(known_lambda))) +
   stat_halfeye(alpha = 0.5, 
                normalize = "panels") +
-  facet_wrap(original_n~pr_scenario,
-             #scales = "free",
-             ncol = 4) +
+  facet_grid(original_n~pr_scenario) +
+  scale_fill_viridis_d() +
   scale_x_log10() +
   theme_bw() +
   guides(
@@ -274,7 +306,7 @@ sim |>
 
 # bias tables
 sim |>
-  filter(original_n == 5000) |>
+  filter(original_n == 1000) |>
   mutate(deviation_under = known_lambda - lambda_under,
          deviation_trimmed = known_lambda - lambda_trimmed) |>
   group_by(pr_scenario, known_lambda) |>
@@ -342,6 +374,7 @@ lambda_ci_prop |>
   filter(proportion<0.1) |>
   group_by(data_source, pr_scenario, original_n) |>
   count()
+
 
 lambda_ci_prop |>
   filter(proportion>0.1) |>

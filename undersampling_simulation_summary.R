@@ -256,15 +256,26 @@ sim |>
 
 
 sim |>
-  # filter(known_lambda == -2, 
-  #        original_n == 5000) |>
+  filter(original_n == 1000) |>
+  mutate(`Bias level` = case_when(
+    pr_scenario == "01" ~ "Minimal",
+    pr_scenario == "02" ~ "Moderate",
+    pr_scenario == "03" ~ "Strong",
+    pr_scenario == "04" ~ "Extreme"
+  ),
+  `Bias level` = factor(`Bias level`,
+                        levels = c("Minimal",
+                                   "Moderate", 
+                                   "Strong", 
+                                   "Extreme"))) |>
   ggplot(aes(x = est_xmin,
              fill = as.factor(known_lambda))) +
   stat_halfeye(alpha = 0.5, 
                normalize = "panels") +
-  facet_grid(original_n~pr_scenario) +
+  facet_grid(`Bias level`~known_lambda,
+             scales = "free_x") +
   scale_fill_viridis_d() +
-  scale_x_log10() +
+  scale_x_log10(guide = "axis_logticks") +
   theme_bw() +
   guides(
     fill = guide_legend(

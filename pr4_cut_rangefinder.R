@@ -40,7 +40,7 @@ df <- tidyr::expand_grid(
   beta_groups,
   pr_scenarios,
   rep = 1:rep,
-  n = 5000,
+  n = 1000,
   cutoff = c(0.001, 0.01, 0.1, 1))
 
 5 * #  lambdas

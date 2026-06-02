@@ -54,7 +54,10 @@ ggsave("plots/bias_scenarios_MS.png",
        width = 6.5)
 
 
-# Example of undersampling ####
+
+# Example of undersampling  -----------------------------------------------
+
+
 # make SI figures of "real" data and undersampling results
 
 # simulate x from bounded power law

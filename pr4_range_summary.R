@@ -56,9 +56,44 @@ results |>
        y = "density",
        title = "Minimal Bias")
 
+results |>
+  filter(pr_scenario == "01",
+         known_lambda == -2.5 |
+           known_lambda == -2 |
+           known_lambda == -1.5) |>
+  select(cutoff,
+         known_lambda,
+         lambda_under,
+         lambda_trimmed) |>
+  rename(`Biased` = lambda_under,
+         `Censored` = lambda_trimmed) |>
+  pivot_longer(`Biased`:`Censored`) |>
+  ggplot(aes(x = value, 
+             fill = name)) +
+  stat_halfeye(alpha = 0.6,
+               normalize = "panels") +
+  geom_vline(aes(xintercept = known_lambda),
+             linetype = "dashed") +
+  scale_fill_manual(values = c(c("#FF1984",
+                                 "#019AFF"))) +
+  facet_grid(cutoff ~ known_lambda,
+             labeller = label_value,
+             scales = "free") +
+  theme_bw() +
+  labs(x = "\u03bb estimate",
+       y = "density",
+       title = "Minimal Bias")
+ggsave("plots/lambda_fixed_cut_minimal.png",
+       units = "in",
+       height = 6,
+       width = 10)
+
 
 results |>
-  filter(pr_scenario == "04") |>
+  filter(pr_scenario == "04",
+         known_lambda == -2.5 |
+           known_lambda == -2 |
+           known_lambda == -1.5) |>
   select(cutoff,
          known_lambda,
          lambda_under,
@@ -81,6 +116,11 @@ results |>
   labs(x = "\u03bb estimate",
        y = "density",
        title = "Extreme Bias")
+ggsave("plots/lambda_fixed_cut_extreme.png",
+       units = "in",
+       height = 6,
+       width = 10)
+
 # gradient plots ----------------------------------------------------------
 results |>
   filter(pr_scenario == "01") |>
@@ -167,8 +207,8 @@ results |>
     method = "lm", 
     alpha = 0.1, 
     linewidth = 1,
-    se = FALSE) +
-  facet_grid(known_beta~cutoff) +
+    se = FALSE) + 
+  facet_grid(cutoff~known_beta) +
   scale_color_manual(values = c(c("#019AFF",
                                   "#FF1984"))) +
   theme_bw() +
@@ -203,7 +243,7 @@ results |>
     alpha = 0.1, 
     linewidth = 1,
     se = FALSE) +
-  facet_grid(known_beta~cutoff) +
+  facet_grid(cutoff~known_beta) +
   scale_color_manual(values = c(c("#019AFF",
                                   "#FF1984"))) +
   theme_bw() +
@@ -289,9 +329,9 @@ lm_models |>
 # beta distributions ------------------------------------------------------
 
 lm_models |>
-  filter(original_n == 5000,
+  filter(original_n == 1000,
          term == "env_gradient",
-         cutoff != 0.001,
+         cutoff != 1,
          pr_scenario == "01") |>
   mutate(`Bias level` = case_when(
     pr_scenario == "01" ~ "Minimal",
@@ -305,12 +345,13 @@ lm_models |>
   stat_halfeye(alpha = 0.5,
                normalize = "panels") +
   geom_vline(aes(xintercept = known_beta)) +
-  facet_grid(known_beta~cutoff,
+  facet_grid(cutoff~known_beta,
              scales = "free") +
   scale_fill_manual(values = c(c("#019AFF",
                                  "#FF1984"))) +
   theme_bw() +
-  labs(title = "Minimal Bias")
+  labs(title = "Minimal Bias",
+       x = "beta estimate")
 ggsave("plots/beta_fixed_minimal_MS.png",
        units = "in",
        height = 6,
@@ -318,9 +359,9 @@ ggsave("plots/beta_fixed_minimal_MS.png",
 
 
 lm_models |>
-  filter(original_n == 5000,
+  filter(original_n == 1000,
          term == "env_gradient",
-         cutoff != 0.001,
+         #cutoff != 0.001,
          pr_scenario == "04") |>
   mutate(`Bias level` = case_when(
     pr_scenario == "01" ~ "Minimal",
@@ -334,12 +375,13 @@ lm_models |>
   stat_halfeye(alpha = 0.5,
                normalize = "panels") +
   geom_vline(aes(xintercept = known_beta)) +
-  facet_grid(known_beta~cutoff,
+  facet_grid(cutoff~known_beta,
              scales = "free") +
   scale_fill_manual(values = c(c("#019AFF",
                                  "#FF1984"))) +
   theme_bw() +
-  labs(title = "Extreme Bias")
+  labs(title = "Extreme Bias",
+       x = "beta estimate")
 ggsave("plots/beta_fixed_extreme_MS.png",
        units = "in",
        height = 6,

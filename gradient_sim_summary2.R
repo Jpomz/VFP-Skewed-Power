@@ -4,9 +4,20 @@ library(tidyverse)
 library(broom)
 library(tidybayes)
 
-results <- readRDS("simulation_results/gradient_sim_run.rds")
+results <- readRDS("simulation_results/gradient_sim_run2.rds")
 
-results <- as_tibble(results)
+results <- as_tibble(results) |>
+  mutate(`Bias level` = case_when(
+    pr_scenario == "01" ~ "Minimal",
+    pr_scenario == "02" ~ "Moderate",
+    pr_scenario == "03" ~ "Strong",
+    pr_scenario == "04" ~ "Extreme"
+  ),
+  `Bias level` = factor(`Bias level`,
+                        levels = c("Minimal",
+                                   "Moderate", 
+                                   "Strong",
+                                   "Extreme")))
 results
 
 # how many parameter sets?
@@ -18,26 +29,77 @@ distinct(results, original_n, group, pr_scenario)
 # 120,000 rows
 
 
+# N comparisons -----------------------------------------------------------
+
+results |>
+  select(known_lambda, 
+         pr_scenario,
+         original_n,
+         under_n, 
+         trimmed_n) |>
+  filter(original_n == 5000,
+         known_lambda == -1.5 |
+           known_lambda == -2 |
+           known_lambda == -1) |>
+  pivot_longer(under_n:trimmed_n) |>
+  ggplot(aes(x = value, 
+             fill = name)) +
+  stat_halfeye(alpha = 0.5, 
+               normalize = "panels")+
+  scale_x_log10(guide = "axis_logticks") +
+  geom_vline(aes(xintercept = original_n)) +
+  facet_grid(pr_scenario~known_lambda,
+             scales = "free")
+
+results |>
+  select(known_lambda, 
+         pr_scenario,
+         original_n,
+         under_n, 
+         trimmed_n) |>
+  pivot_longer(under_n:trimmed_n) |>
+  group_by(known_lambda, 
+           pr_scenario,
+           original_n,
+           name) |>
+  filter(name == "trimmed_n") |>
+  summarize(q10 = 
+              quantile(value,
+                       probs = c(0.1)),
+            q50 = 
+              quantile(value,
+                       probs = c(0.5)),
+            q90 = 
+              quantile(value,
+                       probs = c(0.9)))
+
+# lambdas -----------------------------------------------------------------
+results |>
+  filter(original_n == 5000,
+         known_lambda == -1.25 |
+           known_lambda == -1.5 |
+           known_lambda == -1.75) |>
+  select(known_lambda, 
+         pr_scenario,
+         lambda_under,
+         lambda_trimmed) |>
+  pivot_longer(lambda_under:lambda_trimmed) |>
+  ggplot(aes(x = value, 
+             fill = name)) +
+  stat_halfeye(alpha = 0.5, 
+               normalize = "panels")+
+  geom_vline(aes(xintercept = known_lambda)) +
+  facet_grid(pr_scenario~known_lambda,
+             scales = "free") +
+  scale_fill_manual(values = c(c("#019AFF",
+                                 "#FF1984")))
+
+
 # plot rep lines ----------------------------------------------------------
 
 results |>
   filter(rep %in% 1:100,
-         original_n == 500,
-         pr_scenario == "01"|
-           pr_scenario == "02"|
-           pr_scenario == "03"|
-           pr_scenario == "04") |>
-  mutate(`Bias level` = case_when(
-    pr_scenario == "01" ~ "Minimal",
-    pr_scenario == "02" ~ "Moderate",
-    pr_scenario == "03" ~ "Strong",
-    pr_scenario == "04" ~ "Extreme"
-  ),
-  `Bias level` = factor(`Bias level`,
-                        levels = c("Minimal",
-                                   "Moderate", 
-                                   "Strong",
-                                   "Extreme"))) |>
+         original_n == 5000) |>
   pivot_longer(c(lambda_under,
                  lambda_trimmed),
                names_to = "data_model",
@@ -64,8 +126,8 @@ results |>
             color = "black",
             linetype = "dashed",
             linewidth = 1) +
-  labs(title = "Extreme Bias")
-ggsave("plots/rep_lines_clauset_MS.png",
+  labs(title = "N = 5000")
+ggsave("plots/rep_lines2_clauset_MS.png",
        units = "in",
        height = 6,
        width = 10)
@@ -113,8 +175,8 @@ lm_models |>
          p.value <0.05) |>
   group_by(data_model) |>
   count()
-311 / 12000
-293 / 12000
+284 / 12000
+287 / 12000
 # ~ 2.5% had false positive relationships
 
 # how many models failed to detect a relationship when there was one?
@@ -131,8 +193,8 @@ lm_models |>
   group_by(data_model) |>
   count()
 12000*3 # total reps
-9831 / 36000 # 2.7%
-6791 / 36000 # 1.8%
+5548 / 36000 # 15% - trimmed
+2914 / 36000 # 8% - under
 
 lm_models |>
   filter(term == "env_gradient",
@@ -202,16 +264,22 @@ lm_models |>
                                  "#FF1984")))
 
 lm_models |>
-  filter(original_n == 1000,
+  filter(original_n == 5000,
          term == "env_gradient",
-         pr_scenario == "01" |
+         pr_scenario == "01"|
+           pr_scenario == "02"|
+           pr_scenario == "03"|
            pr_scenario == "04") |>
   mutate(`Bias level` = case_when(
     pr_scenario == "01" ~ "Minimal",
-    pr_scenario =="04" ~ "Extreme"
+    pr_scenario == "02" ~ "Moderate",
+    pr_scenario == "03" ~ "Strong",
+    pr_scenario == "04" ~ "Extreme"
   ),
   `Bias level` = factor(`Bias level`,
-                        levels = c("Minimal", 
+                        levels = c("Minimal",
+                                   "Moderate", 
+                                   "Strong",
                                    "Extreme"))) |>
   ggplot(aes(x = estimate,
              fill = data_model)) +
@@ -223,10 +291,12 @@ lm_models |>
   scale_fill_manual(values = c(c("#019AFF",
                                  "#FF1984"))) +
   theme_bw()
-ggsave("plots/beta_clauset_MS.png",
+ggsave("plots/beta_clauset2_MS.png",
        units = "in",
        height = 6,
        width = 10)
+
+
 
 
 
@@ -287,24 +357,21 @@ results |>
   labs(title = "Censored data")
 
 results |>
-  filter(original_n == 5000) |>
-  pivot_longer(c(lambda_under,
-                 lambda_trimmed),
-               names_to = "data_model", 
-               values_to = "lambda_est") |>
-  group_by(known_beta, pr_scenario, original_n) |>
-  sample_n(10) |>
+  filter(original_n == 5000,
+         known_lambda != -1) |>
   ggplot(aes(x = env_gradient,
-             y = lambda_est,
-             group = rep,
-             color = data_model)) +
+             y = lambda_trimmed,
+             group = rep)) +
   geom_point() +
   stat_smooth(method = "lm",
               se = FALSE,
-              alpha = 0.5,
-              linewidth = 0.5) +
+              alpha = 0.25,
+              linewidth = 0.25,
+              color = "#019AFF") +
   facet_grid(pr_scenario~known_beta) +
-  theme_bw()
+  theme_bw() +
+  labs(title = "Censored data")
+
 
 
 # bias tables -------------------------------------------------------------
@@ -345,7 +412,7 @@ beta_bias <- lm_table_dat |>
           pr_scenario,
           data_model) 
 write_csv(beta_bias, 
-          "simulation_summaries/beta_bias_table.csv")
+          "simulation_summaries/beta_bias2_table.csv")
 
 lm_table_dat |>
   filter(known_beta == -0.5, 

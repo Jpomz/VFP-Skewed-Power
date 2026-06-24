@@ -9,6 +9,11 @@ lw_dat |>
   mutate(dw = a*lengths**b) |>
   arrange(lengths)
 
+
+expand_grid(lw, lengths = 2.5) |>
+  mutate(dw = a*lengths**b) |>
+  arrange(dw)
+
 sample_pr <- function(x, h, b){
   pr = 1 / (1 + (h / x**b))
   return(pr)
@@ -48,7 +53,7 @@ body_pr <- function(h, p, b){
 
 body_pr(h = 0.00001,
         b = 1.5,
-        p = c(0.9, 0.95, 0.99))
+        p = c(0.9, 0.95, 0.99005))
 
 sample_pr(x = c(0.002008299, 
                 0.003304982,

@@ -156,3 +156,123 @@ ggsave("plots/sample_pr_2_scenarios.png",
        units = "px",
        height = 1182,
        width = 2228)
+
+
+
+# example of undersampling with lambda -2.5 -------------------------------
+
+
+set.seed(2015)
+xmin = 0.001
+xmax = 100
+original_dat <- tibble(
+  x = rPLB(5000,
+           b = -2.5,
+           xmin = xmin,
+           xmax = xmax))
+
+# expand grid to include each variable combination with each body size
+sample_dat <- expand_grid(
+  original_dat, 
+  h = c(0.00001, 0.001, 0.01),
+  b = 2) |>
+  mutate(scenario = 
+           case_when(
+             h == 0.00001 & b == 2 ~ "minimal",
+             h == 0.001 & b == 2 ~ "strong",
+             h == 0.01 & b == 2 ~ "extreme"))
+
+# add sample probabilities as a function of x (body mass)
+sampled_dat <- sample_dat |> 
+  mutate(pr = sample_pr(
+    x, 
+    h = h, 
+    b = b
+  ), 
+  sampled = rbinom(n(), 1, prob = pr),
+  fill = case_when(sampled == 1 ~ "sampled", 
+                   .default = "not sampled"))
+
+# add "fill = original" to simulated data
+original_x <- original_dat |>
+  mutate(fill = "original")
+
+# combine "original and sampled data
+both_dats <- left_join(sampled_dat, original_x, by = "x") |>
+  pivot_longer(fill.x:fill.y)
+
+
+# plot matching new write up terms and colors
+# estimate x_min for this scenario
+sampled_x_min <- both_dats |>
+  filter(value == "sampled",
+         scenario == "minimal") |>
+  pull(x)
+x_power_min <- conpl$new(sampled_x_min)
+x_xmin_min <- estimate_xmin(x_power_min)$xmin
+x_xmin_min
+# strong
+sampled_x_str <- both_dats |>
+  filter(value == "sampled",
+         scenario == "strong") |>
+  pull(x)
+x_power_str <- conpl$new(sampled_x_str)
+x_xmin_str <- estimate_xmin(x_power_str)$xmin
+x_xmin_str
+# extreme
+# estimate x_min for this scenario
+sampled_x_ext <- both_dats |>
+  filter(value == "sampled",
+         scenario == "extreme") |>
+  pull(x)
+x_power_ext <- conpl$new(sampled_x_ext)
+x_xmin_ext <- estimate_xmin(x_power_ext)$xmin
+x_xmin_ext
+
+min(original_x$x)
+max(original_x$x)
+
+max(sampled_x_min)
+max(sampled_x_str)
+max(sampled_x_ext)
+
+both_dats |>
+  mutate(x_min = case_when(
+    scenario == "minimal" ~ 0.0052,
+    scenario == "strong" ~ 0.0178,
+    scenario == "extreme" ~ 0.0362
+  )) |>
+  filter(value!= "not sampled") |>
+  mutate(value = case_when(
+    value == "sampled" ~ "Biased", 
+    .default = "Original"
+  ),
+  value = factor(value, 
+                 levels = c("Original", "Biased")),
+  scenario = factor(scenario,
+                    levels = c(
+                      "minimal", "strong", "extreme"
+                    ))) |>
+  ggplot(aes(x = x, 
+             fill = value)) +
+  geom_histogram(binwidth = 0.05, 
+                 position = "dodge",
+                 alpha = 0.75) +
+  scale_x_log10() +
+  facet_wrap(~scenario) +
+  geom_segment(aes(x = x_min,
+                   y = 400,
+                   xend = x_min,
+                   yend = 200),
+               arrow = arrow(length = unit(0.5, "cm")),
+               linewidth = 2,
+               color = "dodgerblue") +
+  scale_fill_manual(values = c("black", "#FF1984")) + 
+  theme_bw(base_size = 18) +
+  guides(fill = guide_legend(title= "Data")) +
+  labs(x =expression(Log[10]~dry~mass)) 
+
+ggsave("plots/orig_bias_xmin_2.5.png",
+       units = "in",
+       height = 4,
+       width = 8)

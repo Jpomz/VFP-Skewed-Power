@@ -73,6 +73,12 @@ results |>
               quantile(value,
                        probs = c(0.9)))
 
+
+# estimated xmins ---------------------------------------------------------
+
+results |>
+  filter(known_lambda == -2)
+
 # lambdas -----------------------------------------------------------------
 results |>
   filter(original_n == 5000,
@@ -161,6 +167,19 @@ lm_models <- results |>
   mutate(coefs = map(
     lm_model, tidy)) |>
   unnest(coefs) 
+
+lm_models <- lm_models |>
+  mutate(`Bias level` = case_when(
+    pr_scenario == "01" ~ "Minimal",
+    pr_scenario == "02" ~ "Moderate",
+    pr_scenario == "03" ~ "Strong",
+    pr_scenario == "04" ~ "Extreme"
+  ),
+  `Bias level` = factor(`Bias level`,
+                        levels = c("Minimal",
+                                   "Moderate", 
+                                   "Strong",
+                                   "Extreme")))
 
 # how many models incorrectly assumed a relationship when there was not one?
 lm_models |>
@@ -265,22 +284,7 @@ lm_models |>
 
 lm_models |>
   filter(original_n == 5000,
-         term == "env_gradient",
-         pr_scenario == "01"|
-           pr_scenario == "02"|
-           pr_scenario == "03"|
-           pr_scenario == "04") |>
-  mutate(`Bias level` = case_when(
-    pr_scenario == "01" ~ "Minimal",
-    pr_scenario == "02" ~ "Moderate",
-    pr_scenario == "03" ~ "Strong",
-    pr_scenario == "04" ~ "Extreme"
-  ),
-  `Bias level` = factor(`Bias level`,
-                        levels = c("Minimal",
-                                   "Moderate", 
-                                   "Strong",
-                                   "Extreme"))) |>
+         term == "env_gradient") |>
   ggplot(aes(x = estimate,
              fill = data_model)) +
   stat_halfeye(alpha = 0.5,

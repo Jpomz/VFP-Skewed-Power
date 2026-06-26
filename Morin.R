@@ -40,6 +40,13 @@ plogis(ln_p(L = 2.30, M = 0.25))
 plogis(ln_p(L = 6.31, M = 0.5))
 plogis(ln_p(L = 19.15, M = 1))
 
+sizeSpectra::lengthToMass(c(0.901,
+                          2.30,
+                          6.31,
+                          19.15),
+                          LWa = 0.0064,
+                          LWb = 2.788)
+
 # 95% probabilities
 plogis(ln_p(L = 0.901, M = 0.125))
 plogis(ln_p(L = 2.30, M = 0.25))

@@ -20,9 +20,15 @@ min(tvf$Value) # 0.5 mm
 # plot raw distribution of body lengths  
 ggplot(tvf, aes(x = Value)) +
   geom_histogram(binwidth = 0.01) +
-  scale_x_log10() +
-  labs(title = "Original sample of x") +
-  facet_wrap(~site_number)
+  scale_x_log10(guide = "axis_logticks") +
+  facet_wrap(~site_number,
+             labeller = "label_both") +
+  labs(x = "Body Length") +
+  theme_bw()
+ggsave("plots/empirical_ex_tvf.png",
+       units = "in",
+       height = 6,
+       width = 10)
 
 # estimate xmin using the poweRlaw package from Clauset
 # 1) first, make a list of data sets  

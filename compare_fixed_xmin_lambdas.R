@@ -84,6 +84,9 @@ distinct(xmin_cols, known_lambda)
 #          rep == 1)
 
 
+# xmin distribution -------------------------------------------------------
+
+
 xmin_cut |>
   filter(known_lambda == -1.9 |
            known_lambda == -2 |
@@ -92,15 +95,18 @@ xmin_cut |>
              fill = as.factor(known_lambda))) +
   stat_halfeye(alpha = 0.5, 
                normalize = "groups")+
-  facet_grid(bias_level~known_lambda,
+  geom_vline(aes(xintercept = 0.005),
+             linetype = "dashed") +
+  facet_grid(known_lambda~bias_level,
              scales = "free") +
-  scale_x_log10(guide = "axis_logticks") +
+  scale_x_log10(guide = "axis_logticks",
+                n.breaks = 3) +
   scale_fill_viridis_d(option = "mako",
                        end = 0.8) +
   theme_classic() +
   theme(legend.position = "none") +
   labs(x = expression(Estimated~x[min]),
-       y = "")
+       y = "") 
 ggsave("plots/xmin_dist_n10000.png",
        units = "in",
        height = 6,
@@ -271,6 +277,33 @@ three_lambdas |>
   summarise(median_abs_delta = median(abs_delta),
             sd_abs_delta = sd(abs_delta)) |>
   write_csv("simulation_summaries/three_lambdas.csv")
+
+
+three_lambdas |>
+  filter(known_lambda == -1.9 |
+           known_lambda == -2 |
+           known_lambda == -2.1) |>
+  ungroup() |>
+  mutate(abs_delta = abs(known_lambda - value)) |>
+  ggplot(aes(x = abs_delta,
+             y = name,
+             fill = name)) +
+  stat_halfeye(normalize = "groups") +
+  scale_fill_manual(values = c(c("#FF914A",
+                                 "#019AFF",
+                                 "#FF1984"))) +
+  facet_grid(known_lambda ~ bias_level,
+             labeller = label_value,
+             scales = "free") +
+  theme_bw()+
+  labs(x = "\u0394 in \u03bb estimates",
+       y = "") +
+  scale_x_continuous(n.breaks = 4)
+ggsave("plots/lambda_deltas_all_three.png",
+       units = "in",
+       height = 10,
+       width = 10)
+
 
 
 # Sample sizes ------------------------------------------------------------
@@ -565,4 +598,113 @@ betas |>
   facet_grid(known_beta ~ bias_level,
              labeller = label_value,
              scales = "free") +
-  theme_bw()
+  theme_bw()+
+  labs(x = "\u0394 in \u03b2 estimates",
+       y = "") +
+  scale_x_continuous(n.breaks = 4)
+ggsave("plots/beta_deltas_all_three.png",
+       units = "in",
+       height = 10,
+       width = 10)
+
+
+# rep lines ---------------------------------------------------------------
+
+fixed_cut |>
+  filter(rep %in% c(1:100, 111, 314, 330, 345, 395, 453, 477, 487)) |>
+  # numbers are reps which actually have lambda estimates for all 5 "sites"
+  pivot_longer(c(lambda_under,
+                 lambda_trimmed),
+               names_to = "data_model",
+               values_to = "lambda_est") |>
+  select(data_model,
+         rep, 
+         lambda_est,
+         known_beta, 
+         bias_level,
+         known_lambda,
+         env_gradient 
+         ) |>
+  group_by(bias_level,
+           rep,
+           known_beta,
+           data_model) |>
+  add_count() |>
+  filter(n ==5) |>
+  ggplot(aes(x = env_gradient,
+             y = lambda_est,
+             color = data_model,
+             group = interaction(rep, data_model))) +
+  geom_point(size = 1,
+             alpha = 0.25) +
+  geom_line(
+    stat = "smooth",
+    method = "lm", 
+    alpha = 0.1, 
+    linewidth = 1,
+    se = FALSE) + 
+  facet_grid(known_beta~bias_level) +
+  scale_color_manual(values = c(c("#FF914A",
+                                  "#FF1984"))) +
+  theme_bw() +
+  geom_line(inherit.aes = FALSE,
+            aes(x = env_gradient,
+                y = known_lambda),
+            color = "black",
+            linetype = "dashed",
+            linewidth = 1) +
+  labs(title = "Fixed Cutoffs")
+ggsave("plots/rep_lines_morin_fixed_SI.png",
+       units = "in",
+       height = 6,
+       width = 10)
+
+xmin_cut |>
+  filter(rep %in% c(1:100)) |>
+  # numbers are reps which actually have lambda estimates for all 5 "sites"
+  pivot_longer(c(lambda_under,
+                 lambda_trimmed),
+               names_to = "data_model",
+               values_to = "lambda_est") |>
+  select(data_model,
+         rep, 
+         lambda_est,
+         known_beta, 
+         bias_level,
+         known_lambda,
+         env_gradient 
+  ) |>
+  group_by(bias_level,
+           rep,
+           known_beta,
+           data_model) |>
+  add_count() |>
+  filter(n ==5) |>
+  ggplot(aes(x = env_gradient,
+             y = lambda_est,
+             color = data_model,
+             group = interaction(rep, data_model))) +
+  geom_point(size = 1,
+             alpha = 0.25) +
+  geom_line(
+    stat = "smooth",
+    method = "lm", 
+    alpha = 0.1, 
+    linewidth = 1,
+    se = FALSE) + 
+  facet_grid(known_beta~bias_level) +
+  scale_color_manual(values = c(c("#019AFF",
+                                  "#FF1984"))) +
+  theme_bw() +
+  geom_line(inherit.aes = FALSE,
+            aes(x = env_gradient,
+                y = known_lambda),
+            color = "black",
+            linetype = "dashed",
+            linewidth = 1) +
+  labs(title = "x_min Cutoffs")
+ggsave("plots/rep_lines_morin_xmin_SI.png",
+       units = "in",
+       height = 6,
+       width = 10)
+

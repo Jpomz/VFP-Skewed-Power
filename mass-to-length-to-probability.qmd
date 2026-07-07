@@ -1,0 +1,238 @@
+---
+title: "Mass to length to probablity"
+format: html
+editor: visual
+embed-resources: true
+toc: true
+---
+
+# Overview
+
+This document recreates the sampling probabilities from Morin et al. 2004 based on lengths.
+
+We then sample mass from a bounded power law, convert it to length, bias the data and estimate $x_{min}$ and display this graphically.
+
+## Setup
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(sizeSpectra)
+```
+
+## Morin's probabilities
+
+Figure 1 in Morin et al. 2004 shows sampling probabilities for different mesh sizes.
+
+Equation 1 represents these relationships mathematically as a function of mesh size
+
+$$
+ln(\frac{p}{1-p}) = a + b*log_{10}(RL) + c*log_{10}(M)
+$$
+
+Where $p$ is the sampling probability, $RL$ is the ratio of body length to mesh size ( $L/M$ ) and $M$ is mesh size, in mm.
+
+Table 1 shows parameter estimates for $a, b, c$
+
+The equation returns the logit of the probability, and we can back transform it with the `plogis()` function.
+
+```{r}
+morin_ln_p  <- function(
+    a = -2.84,
+    b = 5.8, 
+    c = -3.18, 
+    L,
+    M = 0.25){
+  RL = L / M
+  a + b * log10(RL) + c * log10(RL)*log10(M)
+}
+```
+
+The function now takes arguments for length `L` and the mesh size, `M`.
+
+```{r}
+plogis(morin_ln_p(L = 1, M = c(0.125, 0.25, 0.5)))
+```
+
+These probabilities approx. match fig 1. in Morin.
+
+## Recreate Figure 1.
+
+Now I will recreate the sampling probabilities from figure 1 in Morin for body lengths from 0.1 to 13 mm and for mesh sizes 0.125, 0.25, 0.5 and 1.
+
+```{r}
+p_length <- tibble(
+  xl = seq(.1, 13, length.out = 1000)) |>
+  mutate(p_125 = plogis(morin_ln_p(L = xl,
+                                   M = .125)),
+         p_250 = plogis(morin_ln_p(L = xl,
+                                   M = .250)),
+         p_500 = plogis(morin_ln_p(L = xl,
+                                   M = .50)),
+         p_1000 = plogis(morin_ln_p(L = xl,
+                                    M = 1))) |>
+  pivot_longer(p_125:p_1000, 
+               names_to = "mesh", 
+               values_to = "probablity") 
+p_length
+```
+
+And the plot:
+
+```{r}
+p_length |>
+  ggplot(aes(x = xl, 
+             y = probablity, 
+             color = mesh, 
+             group = mesh)) +
+  geom_line() +
+  scale_x_log10(guide = "axis_logticks") +
+  theme_classic() +
+  labs(x = "Length") 
+```
+
+# Convert length to mass
+
+Now, we will convert the length to mass with
+
+$$
+M = aL^b
+$$
+
+We will use generic invertebrate parameters for a and b from Benke et al. 1999: $a = 0.005, b = 2.778$
+
+Conveniently, `sizeSpectra` has a `lengthToMass()` and a `massToLength()` function which we can use. (I just found these, don't think I knew about them before. On a encouraging note, it's the same equation that Jim derived as well.)
+
+We will do this by adding an `xm` column to the `p_length` tibble
+
+```{r}
+p_length_mass <- p_length |>
+  mutate(xm = lengthToMass(xl,
+                           LWa = 0.005, 
+                           LWb = 2.78))
+p_length_mass
+```
+
+Now we can plot the sampling probability based on mass, as well as compare the probabilities for length and mass
+
+```{r}
+p_length_mass |>
+  ggplot(aes(x = xm, 
+             y = probablity, 
+             color = mesh, 
+             group = mesh)) +
+  geom_line() +
+  geom_vline(aes(xintercept = 0.001)) +
+  scale_x_log10(guide = "axis_logticks") +
+  theme_classic() +
+  labs(x = "Mass",
+       title = "Mass",
+       caption = "Black vertical line is mass of 0.001") 
+
+p_length_mass|>
+  pivot_longer(c(xm,xl)) |>
+  ggplot(aes(x = value, 
+             y = probablity, 
+             color = mesh, 
+             group = mesh)) +
+  geom_line() +
+  scale_x_log10(guide = "axis_logticks") +
+  theme_bw() +
+  labs(x = "Length or Mass") +
+  facet_grid(name~.)
+```
+
+# next round of simulations
+
+Based on this, I propose the following:
+
+1.  Sample body masses from `rPLB()`
+2.  Convert mass to length
+3.  Bias data according to Morin's equations for mesh sizes of 0.125 (minimal), 0.25 (moderate), 0.5 (strong) and 1 mm (extreme)
+    1.  See below for an example
+4.  Estimate $x_{min}$ using `poweRlaw`
+5.  Used fixed cutoffs. Options include:
+    1.  explore sampling probabilities for Mesh = 0.25
+        1.  test some body lengths which have arbitrary probability values - 10, 50, 90, 95, 99% (?)
+    2.  Use all the same mesh sizes, and pick the length values which have a 99% sampling probability for each mesh size (see below)
+        1.  For example, with M = 0.25, L=0.23 has 99% probability
+        2.  M = 0.125; L = 0.9
+        3.  M = 500; L = 6.3
+        4.  M = 1000; L \>13
+        5.  Then, see how estimates vary using these 4 cutoffs
+6.  Anything else?
+
+### Body lengths with \~99% probability
+
+```{r}
+p_length |>
+  filter(probablity>=0.989, 
+         probablity<=0.991) |>
+  group_by(mesh) |>
+  summarize(mean_l = mean(xl))
+```
+
+`p_1000` does not show up because length = 13 only has 97.4%
+
+### Example of mass to bias
+
+```{r}
+# sample masses
+original_m <- tibble(xm = rPLB(n = 5000, 
+                               b = -1.75, 
+                               xmin = 0.001, 
+                               xmax = 100),
+                     fill = "original")
+
+
+sampled_m <- original_m |>
+  # convert masses to lengths
+  mutate(xl = massToLength(xm, 
+                           0.005, 
+                           2.778),
+         # use lengths to estimate sampling probability using different mesh sizes
+         p_125 = plogis(morin_ln_p(L = xl,
+                                   M = .125)),
+         p_250 = plogis(morin_ln_p(L = xl,
+                                   M = .250)),
+         p_500 = plogis(morin_ln_p(L = xl,
+                                   M = .50)),
+         p_1000 = plogis(morin_ln_p(L = xl,
+                                   M = 1))) |>
+  #pivot_longer(xm:xl) |>
+  pivot_longer(p_125:p_1000, 
+               names_to = "mesh", 
+               values_to = "probability") |>
+  # "sample" individual body sizes based on Morin's probabilities
+  mutate(
+    sampled = rbinom(n(), 1, prob = probability),
+    fill = case_when(sampled == 1 ~ "sampled", 
+                     .default = "not sampled")) |>
+  select(xm, fill, mesh)
+
+# combine the origianl, "real" data and the biased datas
+both_dats <- left_join(sampled_m,
+                       original_m,
+                       by = "xm") |>
+  pivot_longer(c(fill.x,fill.y))
+
+# plot biased data across mesh sizes
+both_dats |>
+  filter(value !="not sampled") |>
+  mutate(mesh = factor(mesh, 
+                       levels = c("p_125",
+                                  "p_250", 
+                                  "p_500",
+                                  "p_1000"))) |>
+  ggplot(aes(x = xm, 
+             fill = value)) +
+  geom_histogram(binwidth = 0.05, 
+                 position = "dodge",
+                 alpha = 0.75) +scale_x_log10() +
+  facet_wrap(~mesh) +
+  scale_fill_manual(values = c("black", "#FF1984")) + 
+  theme_classic() +
+  guides(fill = guide_legend(title= "Data")) +
+  labs(x =expression(Log[10]~dry~mass)) 
+```
+
+If I have this right, this would basically be looking at the bias you would have in your data if you used different mesh sizes. So for most benthic macroinvertebrate sampling, the `p_250` shows the level of bias that would occur for body sizes greater than 0.001 mg dry mass. If you used a 125 um mesh, there is very little bias. However, if you used a 1 mm mesh, you basically don't sample anything.

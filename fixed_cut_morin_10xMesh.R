@@ -1,13 +1,13 @@
 # Morin sampling probabilities with fixed cutoffs. 
-# originally tried 99% cutoffs
-# after testing different cutoffs for M = 0.5, 95% sampling probability seems to be the sweet spot. 
+# morin recommends a generic cutoff of L = 10X Mesh size
+# testing that here. 
 
-# source("fixed_cut_morin.R")
+# source("fixed_cut_morin_10xMesh.R")
 
 # this script samples body sizes from bounded power law with known lambdas
 # lambdas change across a hypothetical gradient
 # biases data according to 4 Mesh sampling probabilities
-# tests 1 set cutoff value for each Mesh size (~99.0% retention probability)
+# tests 1 set cutoff value for each Mesh size (L = 10X mesh opening size)
 # estimates lambda with biased and censored data
 # estimates relationship of change in lambda across gradient (beta)
 
@@ -23,33 +23,34 @@ rep = n_iter # rep = 2
 
 beta_groups 
 
-# upon closer examination, 97.5% retention probability had better coverage in the 95% CIs
-# lengths with ~99.0% retention probability
-plogis(morin_ln_p(L = 0.705, M = 0.125))
-plogis(morin_ln_p(L = 1.74, M = 0.25))
-plogis(morin_ln_p(L = 4.58, M = 0.5))
-plogis(morin_ln_p(L = 13.25, M = 1))
+# M sizes (mm) = (0.125, 0.25, 0.5, 1.0)
+# cutoff lengths (mm) = (1.25, 2.5, 5, 10)
 
-# masses with 99.0% RP
-sizeSpectra::lengthToMass(c(0.705,
-                            1.74,
-                            4.58,
-                            13.25),
+# masses of cutoff lengths
+sizeSpectra::lengthToMass(c(1.25,
+                            2.5,
+                            5,
+                            10),
                           LWa = 0.0064,
                           LWb = 2.788)
 
-
-# 95% = 0.584, 1.41, 3.63, 10.1
-# 97.5% = 0.0024, 0.0300, 0.4453, 8.6083
-# 99% = 0.901, 2.30, 6.31, 19.15
 cutoffs <- data.frame(
-  cutoff = c(0.705,# mass = 0.00492
-             1.74,# mass = 0.0653
-             4.58,# mass = 1.083
-             13.25)# mass = 25.281
+  cutoff = c(1.25,# mass = 0.0120
+             2.5,# mass =  0.082
+             5,# mass =    0.569
+             10)# mass =   3.928
 )
 
 cutoffs <- cbind(cutoffs, morin_scenarios)
+cutoffs_out <- cutoffs
+cutoffs_out$cutoff_mass <- sizeSpectra::lengthToMass(
+  cutoffs_out$cutoff, 
+  LWa, 
+  LWb
+)
+cutoffs_out$cutoff_length <- cutoffs_out$cutoff
+saveRDS(cutoffs_out[,2:5], "simulation_results/Morin_10x_cutoff.RDS")
+
 
 df <- tidyr::expand_grid(
   beta_groups,
@@ -112,10 +113,10 @@ stopCluster(cl = cluster)
 
 end <- tictoc::toc()
 run <- end$callback_msg
-saveRDS(run, paste0("simulation_results/fixed_cut_morin_run_time_s_", Sys.Date(), ".rds"))
+saveRDS(run, paste0("simulation_results/fixed_cut_morin_10xM_run_time_s_", Sys.Date(), ".rds"))
 
 # results
-saveRDS(results, "simulation_results/fixed_cut_morin_sim_run.rds")
+saveRDS(results, "simulation_results/fixed_cut_morin_10xM_sim_run.rds")
 
 # remove Rplots ####
 file.remove(list.files(pattern = "Rplot*"))

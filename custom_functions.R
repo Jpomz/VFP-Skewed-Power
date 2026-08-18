@@ -42,14 +42,14 @@ plot_morin_bias <- function(
     mutate(probability = plogis(morin_ln_p(L = xl,
                                            M = M)), 
            sampled = rbinom(n(), 1, prob = probability),
-           fill = case_when(sampled == 1 ~ "sampled", 
+           fill = case_when(sampled == 1 ~ "Biased", 
                             .default = "not sampled"))
   
   # under sampled ####
   # filter out the "sampled" data
   # this represents empirical data which has fewer little things than expected
   x_under <- x_df |>
-    filter(fill == "sampled")
+    filter(fill == "Biased")
   
   plot_x_df <- tibble(x = x, 
                       fill = "Original")
@@ -65,11 +65,96 @@ plot_morin_bias <- function(
     geom_histogram(binwidth = binwidth, 
                    position = "dodge",
                    alpha = alpha) +
-    scale_fill_manual(values = c("black", "#FF1984"))+
+    scale_fill_manual(values = c("#FF1984", "black"))+
     scale_x_log10(guide = "axis_logticks") +
     # scale_y_log10() +
     theme_classic() 
   print(p)
+}
+
+
+morin_correction <- function(
+    n = 10000, 
+    lambda = -2,
+    xmin = 0.01, 
+    xmax = 10000,
+    M = .25,
+    vecDiff = 2,
+    LWa = 0.0064,
+    LWb = 2.788){
+  # sample masses from a bounded power law
+  x <- rPLB(n = n, b = lambda, xmin = xmin, xmax = xmax)
+  xmin_obs = min(x)
+  xmax_obs = max(x)
+  
+  # put masses into a df and convert to length
+  x_df <- tibble(x = x)
+  # convert mass to length
+  # Using the values for "all insects" from table 2 in Benke et al. 1999
+  # M = aL^b
+  # where L is length, a = 0.0064, b = 2.788
+  # solved for L = (M/LWa)^(1/b)
+  x_df <- x_df |>
+    mutate(xl = massToLength(x, LWa = LWa, LWb = LWb))
+  
+  # make a df with the sample probability and not/sampled columns
+  x_df <- x_df |>
+    mutate(probability = plogis(morin_ln_p(L = xl,
+                                           M = M)), 
+           sampled = rbinom(n(), 1, prob = probability),
+           fill = case_when(sampled == 1 ~ "sampled", 
+                            .default = "not sampled"))
+  
+  # under sampled ####
+  # filter out the "sampled" data
+  # this represents empirical data which has fewer little things than expected
+  x_under <- x_df |>
+    filter(fill == "sampled")
+  # how many body sizes were sampled?
+  under_n <- nrow(x_under)
+  
+  # lambdas ####
+  # lambda under ####
+  # estimate lambda from undersampled data
+  x_under_vector <- x_under$x
+  lambda_under <- calcLike(negLL.fn = negLL.PLB,
+                           x = x_under_vector,
+                           xmin = min(x_under_vector), 
+                           xmax = max(x_under_vector), 
+                           n = length(x_under_vector), 
+                           sumlogx = sum(log(x_under_vector)), 
+                           p = -1.5,
+                           suppress.warnings = TRUE,
+                           vecDiff = vecDiff)
+  
+  # lambda inverse ####
+  # estimate lambda from trimmed data
+  lambda_inverse <- calcLike(
+    negLL.fn = negLL.PLB.counts,
+    x = x_under_vector,
+    c = 1/x_under$probability,
+    p = -1.5,
+    suppress.warnings = TRUE,
+    vecDiff = vecDiff)
+  # end/return ####
+  
+  
+  # return data frame ####
+  out_df <- data.frame(
+    known_lambda = lambda, 
+    lambda_under = lambda_under$MLE,
+    lambda_under_lo = lambda_under$conf[1],
+    lambda_under_hi = lambda_under$conf[2],
+    lambda_trimmed = lambda_inverse$MLE,
+    lambda_trimmed_lo = lambda_inverse$conf[1],
+    lambda_trimmed_hi = lambda_inverse$conf[2],
+    original_n = n,
+    under_n = under_n,
+    M = M,
+    xmin_obs = xmin_obs,
+    xmin_under = min(x_under_vector),
+    xmax_obs = xmax_obs)
+  return(out_df)
 }
 
 
@@ -184,7 +269,8 @@ morin_fixed_cut_lambda <- function(
     vecDiff = 2,
     LWa = 0.0064,
     LWb = 2.788,
-    cutoff = 0.001){
+    cutoff = 0.1 # cutoff body length
+    ){
   # Mass ####
   # sample masses from a bounded power law
   x <- rPLB(n = n, b = lambda, xmin = xmin, xmax = xmax)

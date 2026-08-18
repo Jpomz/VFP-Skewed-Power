@@ -3,11 +3,8 @@
 # source("fixed_cut_morin_search_probability.R")
 
 # this script samples body sizes from bounded power law with known lambdas
-# lambdas chnage across a hypothetical gradient
-# biases data according to extreme sampling probabilities
-# tests 4 set cutoff values
-# estimates lambda with biased and censored data
-# estimates relationship of change in lambda across gradient (beta)
+# biases data according to 4 retention probabilities
+# tests 11 cutoff values
 
 library(parallel)
 library(foreach)
@@ -17,7 +14,9 @@ library(doParallel)
 source("custom_functions.R")
 source("master_variable_designation.R")
 
-rep = n_iter
+rep = 1000
+LWa = 0.0064
+LWb = 2.788
 
 lambda_parameters <- data.frame(
   known_lambda = -1.9,
@@ -26,83 +25,155 @@ lambda_parameters <- data.frame(
   vecDiff = vecDiff,
   bias_level = "strong")
 
-cutoff_5 <- data.frame(cutoff_mass = c(0.001726209,
-                                    0.013878422,
-                                    0.111821289,
-                                    0.150001767,
-                                    0.159636867,
-                                    0.186210813,
-                                    0.225830864,
-                                    0.439920252, 
-                                    1.088082505,
-                                    9.068814540),
-                    cutoff = c(0.625,# 10% 
-                               1.32,# 50% 
-                               2.79,# 90% 
-                               3.1, #92.5%
-                               3.17, #93%
-                               3.35, #94%
-                               3.59,# 95% 
-                               4.56, # 97.5% 
-                               6.31,# 99.0% 
-                               13.5), # 99.9%
-                    cutoff_probabilities = c(
-                      "10%",
-                      "50%",
-                      "90%",
-                      "92.5%",
-                      "93%",
-                      "94%",
-                      "95%",
-                      "97.5%",
-                      "99.0%",
-                      "99.9%"),
-                    M = 0.5)
+cutoff125 = c(
+  .1485,# 10% 
+  0.266,# 50% 
+  0.477,# 90% 
+  0.518, #92.5%
+  0.5282, #93%
+  0.552, #94%
+  0.581,# 95% 
+  0.703, # 97.5% 
+  0.91,# 99.0% 
+  1.085, # 99.5%
+  1.25) # 10X mesh size ~99.7 
+plogis(morin_ln_p(L = cutoff125,
+                  M = 0.125))
+cutoff_125 <- data.frame(
+  cutoff = cutoff125, 
+  cutoff_probabilities = c(
+    "10%",
+    "50%",
+    "90%",
+    "92.5%",
+    "93%",
+    "94%",
+    "95%",
+    "97.5%",
+    "99.0%",
+    "99.5%",
+    "10xM"),
+  M = 0.125)
+cutoff_125$cutoff_mass <- sizeSpectra::lengthToMass(
+  cutoff_125$cutoff,
+  LWa = LWa, 
+  LWb = LWb
+)
 
-cutoff_25 <- data.frame(cutoff_mass = c(0.0002209791,
-                                        0.0013881449,
-                                        0.0047414852,
-                                        0.0116584183,
-                                        0.0127374171,
-                                        0.0144726531,
-                                        0.0166802617,
-                                        0.0295020714,
-                                        0.0676656537,
-                                        0.4453207447),
-                       cutoff = c(0.299,# 10% 
-                                  0.578,# 50% 
-                                  0.898,# 90% 
-                                  1.24, #92.5%
-                                  1.28, #93%
-                                  1.34, #94%
-                                  1.41,# 95% 
-                                  1.73, # 97.5% 
-                                  2.33,# 99.0% 
-                                  4.58), # 99.9%
-                       cutoff_probabilities = c(
-                         "10%",
-                         "50%",
-                         "90%",
-                         "92.5%",
-                         "93%",
-                         "94%",
-                         "95%",
-                         "97.5%",
-                         "99.0%",
-                         "99.9%"),
-                       M = 0.25)
-
-cutoff_df <- rbind(cutoff_5, cutoff_25)
-
-# 10% = 0.625
-# 50% = 1.32
-# 90% = 2.79
-# 95% = 3.59
-# 97/5 = 4.56
-# 99.0% = 6.31
-# 99.9% = 13.5
+cutoff25 = c(0.305,# 10% 
+           0.578,# 50% 
+           0.885,# 90% 
+           1.24, #92.5%
+           1.28, #93%
+           1.34, #94%
+           1.41,# 95% 
+           1.740, # 97.5% 
+           2.3,# 99.0% 
+           2.5, # 10 x Mesh ~99.2
+           2.85) # 99.5%
+plogis(morin_ln_p(L = cutoff25,
+                  M = 0.25))
 
 
+cutoff_25 <- data.frame(
+  cutoff = cutoff25, 
+  cutoff_probabilities = c(
+    "10%",
+    "50%",
+    "90%",
+    "92.5%",
+    "93%",
+    "94%",
+    "95%",
+    "97.5%",
+    "99.0%",
+    "10xM",
+    "99.5%"),
+  M = 0.25)
+cutoff_25$cutoff_mass <- sizeSpectra::lengthToMass(
+  cutoff_25$cutoff,
+  LWa = LWa, 
+  LWb = LWb
+)
+
+cutoff5 = c(0.625,# 10% 
+            1.32,# 50% 
+            2.79,# 90% 
+            3.1, #92.5%
+            3.18, #93%
+            3.36, #94%
+            3.59,# 95% 
+            4.58, # 97.5% 
+            5, # 10X mesh size ~98
+            6.31,# 99.0% 
+            8) # 99.5%
+plogis(morin_ln_p(L = cutoff5,
+                  M = 0.5))
+
+cutoff_5 <- data.frame(
+  cutoff = cutoff5, 
+  cutoff_probabilities = c(
+    "10%",
+    "50%",
+    "90%",
+    "92.5%",
+    "93%",
+    "94%",
+    "95%",
+    "97.5%",
+    "10xM",
+    "99.0%",
+    "99.5%"),
+  M = 0.5)
+cutoff_5$cutoff_mass <- sizeSpectra::lengthToMass(
+  cutoff_5$cutoff,
+  LWa = LWa, 
+  LWb = LWb
+)
+
+cutoff1 = c(1.291,# 10% 
+            3.09,# 50% 
+            7.4,# 90% 
+            8.37, #92.5%
+            8.62, #93%
+            9.2, #94%
+            9.94,# 95% 
+            10, # 10X mesh size ~95.07
+            13.23, # 97.5% 
+            19.15,# 99.0% 
+            25.25) # 99.5%
+plogis(morin_ln_p(L = cutoff1,
+                  M = 1))
+
+cutoff_1 <- data.frame(
+  cutoff = cutoff1, 
+  cutoff_probabilities = c(
+    "10%",
+    "50%",
+    "90%",
+    "92.5%",
+    "93%",
+    "94%",
+    "95%",
+    "10xM",
+    "97.5%",
+    "99.0%",
+    "99.5%"),
+  M = 1)
+cutoff_1$cutoff_mass <- sizeSpectra::lengthToMass(
+  cutoff_1$cutoff,
+  LWa = LWa, 
+  LWb = LWb
+)
+
+
+cutoff_df <- rbind(cutoff_125,
+                   cutoff_25,
+                   cutoff_5,
+                   cutoff_1)
+
+saveRDS(cutoff_df, 
+        "simulation_results/morin_fixed_cutoff_search.rds")
 
 df <- tidyr::expand_grid(
   lambda_parameters, 
@@ -110,15 +181,15 @@ df <- tidyr::expand_grid(
   n = 10000,
   # cutoffs are body lengths
   cutoff_df,
-  LWa = 0.0064,
-  LWb = 2.788)
+  LWa,
+  LWb)
 
 1 * #  lambdas
   2 * #  scenarios
   1 * #  n's
-  500 * #  reps
-  10  #  cutoffs
-# 10000 sims ~ 
+  10000 * #  reps
+  11  #  cutoffs
+# 22000 sims ~ 4 minutes
 
   
 # set up parallel processing

@@ -12,6 +12,59 @@ ln_p  <- function(a = -2.84,
   a + b * log10(RL) + c * log10(RL)*log10(M)
 }
 
+what_length = function(p,
+                       a = -2.84,
+                       b = 5.8, 
+                       c = -3.18, 
+                       M = 0.25 ){
+  logit_p <- log(p/(1-p))
+  L <- M * 10^((logit_p - a) / (b + c*log10(M)))
+  return(L)
+}
+plogis(ln_p(L = .5))
+
+what_length(p = 0.3733928)
+what_length(p = 0.99, M = c(0.125, 0.25, 0.5, 1))
+
+plogis(ln_p(L = 1.712277))
+
+
+
+a = -2.84
+b = 5.8
+c = -3.18 
+M = 0.25
+
+L_test <- .5   # arbitrary test value
+
+# Forward: L -> logit -> p
+logit_val <- a*b*log10(L_test/M) + c*log10(L_test/M)*log10(M)
+p <- plogis(logit_val)
+
+# Backward: p -> L
+logit_p <- log(p/(1-p))
+L_recovered <- M * 10^(logit_p / (a*b + c*log10(M)))
+
+L_test - L_recovered   # should be ~0 if algebra and code are consistent
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 plogis(ln_p(L = 1))
 
 log(0.9 / (1 - 0.9))
@@ -208,25 +261,26 @@ p_length_mass |>
 # example of bias data ----------------------------------------------------
 source("custom_functions.R")
 set.seed(1152)
-p1 <- plot_morin_bias(n = 5000,
+n = 10000
+p1 <- plot_morin_bias(n = n,
                 lambda = -2,
                 M = 0.125,
                 binwidth = 0.1) +
   labs(title = "Minimal Bias; 125 micron") +
   coord_cartesian(xlim = c(0.001, 100))
-p2 <- plot_morin_bias(n = 5000,
+p2 <- plot_morin_bias(n = n,
                 lambda = -2,
                 M = 0.25,
                 binwidth = 0.1) +
   labs(title = "Moderate Bias; 250 micron") +
   coord_cartesian(xlim= c(0.001, 100))
-p3 <- plot_morin_bias(n = 5000,
+p3 <- plot_morin_bias(n = n,
                 lambda = -2,
                 M = 0.5,
                 binwidth = 0.1) +
   labs(title = "Strong Bias; 500 micron") +
   coord_cartesian(xlim= c(0.001, 100))
-p4 <- plot_morin_bias(n = 5000,
+p4 <- plot_morin_bias(n = n,
                 lambda = -2,
                 M = 1,
                 binwidth = 0.1) +

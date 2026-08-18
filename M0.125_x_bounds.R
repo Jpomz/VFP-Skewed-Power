@@ -1,15 +1,11 @@
-# Morin sampling probabilities with fixed cutoffs. 
-# originally tried 99% cutoffs
-# after testing different cutoffs for M = 0.5, 95% sampling probability seems to be the sweet spot. 
+# Showing that M = 0.125 is still biased when x-bounds are shifted smaller
 
-# source("fixed_cut_morin.R")
+# source("M0.125_x_bounds.R")
 
 # this script samples body sizes from bounded power law with known lambdas
-# lambdas change across a hypothetical gradient
-# biases data according to 4 Mesh sampling probabilities
-# tests 1 set cutoff value for each Mesh size (~99.0% retention probability)
-# estimates lambda with biased and censored data
-# estimates relationship of change in lambda across gradient (beta)
+# This is different from the main text in that only the M = 0.125 bias is used
+# additionally, the range of body sizes is shifted to start and end at smaller values
+# the point is to show that M = 0.125 is not the "fix" for sampling benthic macroinvertebrates - it just performs well when no body sizes smaller than 0.001 
 
 library(parallel)
 library(foreach)
@@ -17,55 +13,42 @@ library(doParallel)
 
 # source the custom functions written for this simulation study
 source("custom_functions.R")
-source("master_variable_designation.R")
+set.seed(965)
+vecDiff = 2
+xmin = 0.00001
+xmax = 100
+n = 10000
+n_iter <- 500
+
+lambda <- data.frame(
+  known_lambda = c(-1.9, -2, -2.1),
+  xmin = xmin, 
+  xmax = xmax,
+  vecDiff = vecDiff)
 
 rep = n_iter # rep = 2
 
-beta_groups 
-
-# upon closer examination, 97.5% retention probability had better coverage in the 95% CIs
-# lengths with ~99.0% retention probability
-plogis(morin_ln_p(L = 0.705, M = 0.125))
-plogis(morin_ln_p(L = 1.74, M = 0.25))
-plogis(morin_ln_p(L = 4.58, M = 0.5))
-plogis(morin_ln_p(L = 13.25, M = 1))
-
-# masses with 99.0% RP
-sizeSpectra::lengthToMass(c(0.705,
-                            1.74,
-                            4.58,
-                            13.25),
-                          LWa = 0.0064,
-                          LWb = 2.788)
-
-
-# 95% = 0.584, 1.41, 3.63, 10.1
-# 97.5% = 0.0024, 0.0300, 0.4453, 8.6083
-# 99% = 0.901, 2.30, 6.31, 19.15
-cutoffs <- data.frame(
-  cutoff = c(0.705,# mass = 0.00492
-             1.74,# mass = 0.0653
-             4.58,# mass = 1.083
-             13.25)# mass = 25.281
+morin_scenarios <- data.frame(
+  M = c(0.125),
+  bias_level = factor(c("minimal"),
+    levels = c("minimal"))
 )
 
-cutoffs <- cbind(cutoffs, morin_scenarios)
 
 df <- tidyr::expand_grid(
-  beta_groups,
-  cutoffs,
+  lambda,
+  cutoff = 1.25, # Length which is 10x M
+  morin_scenarios,
   rep = 1:rep,
   n = 10000,
   LWa = 0.0064,
   LWb = 2.788)
 
-5 * #  lambdas
-  4 * #  scenarios
+3 * #  lambdas
+  1 * #  scenarios
   1 * #  n's
-  4 * #  cutoffs
   500  #  reps
-# 80 sets
-# 40 000 simulations ~3 minutes
+# 1500 simulations 
   
 # set up parallel processing
 cores <- detectCores()-1 # when running on its own
@@ -112,10 +95,10 @@ stopCluster(cl = cluster)
 
 end <- tictoc::toc()
 run <- end$callback_msg
-saveRDS(run, paste0("simulation_results/fixed_cut_morin_run_time_s_", Sys.Date(), ".rds"))
+saveRDS(run, paste0("simulation_results/M0.125_x_bounds_run_time_s_", Sys.Date(), ".rds"))
 
 # results
-saveRDS(results, "simulation_results/fixed_cut_morin_sim_run.rds")
+saveRDS(results, "simulation_results/M0.125_x_bounds_sim_run.rds")
 
 # remove Rplots ####
 file.remove(list.files(pattern = "Rplot*"))

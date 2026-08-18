@@ -1,14 +1,14 @@
-# Morin sampling probabilities with fixed cutoffs. 
-# originally tried 99% cutoffs
-# after testing different cutoffs for M = 0.5, 95% sampling probability seems to be the sweet spot. 
+# Morin correction: 1/p
 
-# source("fixed_cut_morin.R")
+# source("gradient_sim_run_morin_correction.R")
 
-# this script samples body sizes from bounded power law with known lambdas
+# this script samples body sizes from bounded power law with known lambda
 # lambdas change across a hypothetical gradient
-# biases data according to 4 Mesh sampling probabilities
-# tests 1 set cutoff value for each Mesh size (~99.0% retention probability)
-# estimates lambda with biased and censored data
+# biases data according to 4 mesh sizes from Morin et al. 2004
+# estimates lambda with biased data
+# estimates lambda using the Morin correction
+# "count" of body sizes = 1/p
+# where p is retention probability based on mesh size and body length
 # estimates relationship of change in lambda across gradient (beta)
 
 library(parallel)
@@ -19,54 +19,26 @@ library(doParallel)
 source("custom_functions.R")
 source("master_variable_designation.R")
 
-rep = n_iter # rep = 2
+rep = n_iter
+# rep = 2
 
-beta_groups 
+beta_groups
+morin_scenarios
 
-# upon closer examination, 97.5% retention probability had better coverage in the 95% CIs
-# lengths with ~99.0% retention probability
-plogis(morin_ln_p(L = 0.705, M = 0.125))
-plogis(morin_ln_p(L = 1.74, M = 0.25))
-plogis(morin_ln_p(L = 4.58, M = 0.5))
-plogis(morin_ln_p(L = 13.25, M = 1))
+df <- tidyr::expand_grid(beta_groups,
+                  morin_scenarios,
+                  rep = 1:rep,
+                  n = n,
+                  LWa = 0.0064,
+                  LWb = 2.788)
+# 4 betas
+# 5 lambdas
+# 4 scenarios
+# 1 n
+# 500 reps
+4*5*4*1*500
+# 40 000 sims ~ 1 hour
 
-# masses with 99.0% RP
-sizeSpectra::lengthToMass(c(0.705,
-                            1.74,
-                            4.58,
-                            13.25),
-                          LWa = 0.0064,
-                          LWb = 2.788)
-
-
-# 95% = 0.584, 1.41, 3.63, 10.1
-# 97.5% = 0.0024, 0.0300, 0.4453, 8.6083
-# 99% = 0.901, 2.30, 6.31, 19.15
-cutoffs <- data.frame(
-  cutoff = c(0.705,# mass = 0.00492
-             1.74,# mass = 0.0653
-             4.58,# mass = 1.083
-             13.25)# mass = 25.281
-)
-
-cutoffs <- cbind(cutoffs, morin_scenarios)
-
-df <- tidyr::expand_grid(
-  beta_groups,
-  cutoffs,
-  rep = 1:rep,
-  n = 10000,
-  LWa = 0.0064,
-  LWb = 2.788)
-
-5 * #  lambdas
-  4 * #  scenarios
-  1 * #  n's
-  4 * #  cutoffs
-  500  #  reps
-# 80 sets
-# 40 000 simulations ~3 minutes
-  
 # set up parallel processing
 cores <- detectCores()-1 # when running on its own
 #cores <- 7 # when running with other simulations
@@ -85,13 +57,12 @@ results <- foreach(j = 1:nrow(df),
                                    # sets a new seed for each parallel instance
                                    # but makes this reproducible for re-running simulation
                                    set.seed(j+1130)
-                                   df_out <- morin_fixed_cut_lambda(
+                                   df_out <- morin_correction(
                                      n = df[j,]$n, 
                                      lambda = df[j,]$known_lambda,
                                      xmin = df[j,]$xmin, 
                                      xmax = df[j,]$xmax, 
                                      M = df[j,]$M,
-                                     cutoff = df[j,]$cutoff,
                                      LWa = df[j,]$LWa,
                                      LWb = df[j,]$LWb,
                                      vecDiff = df[j,]$vecDiff)
@@ -109,13 +80,13 @@ results <- foreach(j = 1:nrow(df),
                                  }
 #results
 stopCluster(cl = cluster)
-
 end <- tictoc::toc()
 run <- end$callback_msg
-saveRDS(run, paste0("simulation_results/fixed_cut_morin_run_time_s_", Sys.Date(), ".rds"))
+
+saveRDS(run, paste0("simulation_results/gradient_run_morin_correction_time_s_", Sys.Date(), ".rds"))
 
 # results
-saveRDS(results, "simulation_results/fixed_cut_morin_sim_run.rds")
+saveRDS(results, "simulation_results/gradient_sim_run_morin_correction.rds")
 
 # remove Rplots ####
 file.remove(list.files(pattern = "Rplot*"))

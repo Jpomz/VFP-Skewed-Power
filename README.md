@@ -12,9 +12,17 @@ Empirical observations which are thought to follow a power law distribution, suc
 
 Although the effect of under sampling the smallest individuals has been recognized widely in the ISD literature, it remains unclear how much estimates of power law exponents are affected by under sampling of the smallest body sizes. 
 
-Here, we use a simulation framework with repeated sampling to explore how under sampling may affect estimates of power law exponents. We sample body size values from a known distribution and then artificially under sample some range of small body sizes to investigate the deviance of estimates from the known values. Furthermore, we explore methods for correcting bias in estimates through censoring the data in two different ways (Figure 1). Finally, we also simulate a known relationship between $\lambda$ and a hypothetical gradient and investigate the deviance between the known and estimated relationship using biased and censored data (Figure 2). 
+Here, we use a simulation framework with repeated sampling to explore how under sampling may affect estimates of power law exponents. We sample body size values from a known distribution and then artificially under sample some range of small body sizes to investigate the deviance of estimates from the known values. Furthermore, we explore methods for correcting bias in estimates through censoring the data in two different ways (Figure 1). 
+<figure>
+  <img width="1280" height="1536" alt="conceptual_bias_correction" src="https://github.com/user-attachments/assets/fa9baa74-089d-4fff-ba0d-f1bf7606d84b" />
+  <figcaption> Figure 1. Conceptual figure showing the sampling framework.</figcaption>
+</figure>  
 
-![Figure 1. Conceptual figure showing the simulation framework.](Conceptual-bias-correction.png)
+  
+<br/> Finally, we also simulate a known relationship between $\lambda$ and a hypothetical gradient and investigate the deviance between the known and estimated relationship using biased and censored data (Figure 2). 
+
+  
+
 ![Figure 2. Conceptual figure showing the relationship across a hypothetical gradient.](gradient_concept.png)
 
 ## Basic workflow  

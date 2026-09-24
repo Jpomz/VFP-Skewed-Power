@@ -47,9 +47,9 @@ To fully recreate the simulations and results, run the following scripts in orde
     -    `custom_functions.R` and `master_variable_designation.R`
     -    These contain special functions to run the simulations and set global variable values (i.e., known lambdas, hypothetical gradient, sample size, body size range, etc.)
 
--    The following libraries are required:
-    -    `tidyverse`, `broom`, `tidybayes`, `sizeSpectra`, `parallel`, `foreach`, `doparallel`, `ggpubr`
-    -    `sizeSpectra` can be downloaded by visiting (Andrew Edwards Git Hub page)[https://github.com/andrew-edwards/sizeSpectra] 
+-  The following libraries are required:
+    -  `tidyverse`, `broom`, `tidybayes`, `sizeSpectra`, `parallel`, `foreach`, `doparallel`, `ggpubr`, `poweRlaw`
+    -  `sizeSpectra` can be downloaded by visiting [Andrew Edwards Git Hub page](https://github.com/andrew-edwards/sizeSpectra)
 
 -  The `gradient_sim_run_morin.R` script takes approx. 2.5 days to run when using 15 parallel cores.
 -  The results of both `gradient_sim...` and `fixed_cut...` are already in the `simulation_results/` folder

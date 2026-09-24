@@ -1,15 +1,15 @@
 # comparing estimates for fixed and xmin cutoffs
 
+# this script reads in results made from the gradient_sim_run.R and fixed_cut_morin_10xMesh.R scripts
+# it takes info from each simulation run and summarizes it to produce graphs, tables, etc. 
+# all the tables and figures in the main text and some of the SI material is produced here. 
+
 library(tidyverse)
 library(broom)
 library(tidybayes)
 
 
 # Read in data ------------------------------------------------------------
-
-# ~97.5% cutoff
-# fixed_cut <- readRDS("simulation_results/fixed_cut_morin_sim_run.rds")
-
 # 10xM cutoff
 fixed_cut <- readRDS("simulation_results/fixed_cut_morin_10xM_sim_run.rds")
 cutoff_df_10x <- readRDS("simulation_results/Morin_10x_cutoff.RDS")
@@ -27,14 +27,6 @@ names(xmin_cut)
 # wrangle data ------------------------------------------------------------
 
 
-# make a variable to filter on
-# only want to keep the ~XX% cutoff for each Mesh size
-# cut_mass <- tibble(
-#   cutoff = unique(fixed_cut$cutoff),
-#   M = c(0.125, 0.25, 0.5, 1),
-#   cutoff_mass = sizeSpectra::lengthToMass(cutoff, 
-#                                           LWa = 0.0064,
-#                                           LWb = 2.788))
 fixed_cols <- fixed_cut |>
   select(known_lambda, 
          lambda_trimmed,
@@ -44,14 +36,6 @@ fixed_cols <- fixed_cut |>
          group,
          bias_level,
          env_gradient) |>
-  # mutate(keep = case_when(
-  #   cutoff == 0.584 & M == 0.125 ~ TRUE,
-  #   cutoff == 1.410 & M == 0.25 ~ TRUE,
-  #   cutoff == 3.63 & M == 0.5 ~ TRUE,
-  #   cutoff == 10.1 & M == 1 ~ TRUE,
-  #   .default = FALSE
-  # )) |> 
-  # filter(keep == TRUE) |>
   as_tibble() |>
   rename(fixed_lambda = lambda_trimmed) |>
   select(known_lambda, fixed_lambda, rep,
@@ -61,7 +45,6 @@ fixed_cols <- fixed_cut |>
 
 xmin_cols <- xmin_cut |>
   as_tibble() |>
-  # filter(original_n == 10000) |>
   select(known_lambda, 
          lambda_trimmed,
          rep,
@@ -101,50 +84,10 @@ xmin_cut |>
   theme(legend.position = "none") +
   labs(x = expression(Estimated~x[min]),
        y = "") 
-## old version #
-# xmin_cut |>
-#   filter(known_lambda == -1.9 |
-#            known_lambda == -2 |
-#            known_lambda == -2.1) |>
-#   left_join(cutoff_df_10x) |>
-#   ggplot(aes(x = est_xmin,
-#              fill = as.factor(known_lambda))) +
-#   stat_halfeye(alpha = 0.5, 
-#                normalize = "groups")+
-#   geom_vline(aes(xintercept = cutoff_mass),
-#              linetype = "dashed") +
-#   facet_grid(known_lambda~bias_level) +
-#   scale_x_log10(guide = "axis_logticks",
-#                 n.breaks = 3) +
-#   scale_fill_viridis_d(option = "mako",
-#                        end = 0.8) +
-#   theme_classic() +
-#   theme(legend.position = "none") +
-#   labs(x = expression(Estimated~x[min]),
-#        y = "") 
 ggsave("plots/xmin_dist_n10000_SI.png",
        units = "in",
        height = 6,
        width = 10)
-
-# xmin_cut |>
-#   filter(known_lambda == -2.0) |>
-#   left_join(cutoff_df_10x) |>
-#   ggplot(aes(x = est_xmin,
-#              fill = bias_level)) +
-#   stat_halfeye(alpha = 0.5, 
-#                normalize = "groups")+
-#   geom_vline(aes(xintercept = cutoff_mass),
-#              linetype = "dashed") +
-#   facet_grid(known_lambda~bias_level) +
-#   scale_x_log10(guide = "axis_logticks",
-#                 n.breaks = 3) +
-#   scale_fill_viridis_d(option = "mako",
-#                        end = 0.8) +
-#   theme_classic() +
-#   theme(legend.position = "none") +
-#   labs(x = expression(Estimated~x[min]),
-#        y = "") 
 
 xmin_cut |>
   filter(known_lambda == -2.0) |>
@@ -302,34 +245,10 @@ lambdas_deviation <- three_lambdas |>
     median_abs_delta = median(abs_delta),
             sd_abs_delta = sd(abs_delta))
 
-# plot of lambda delta
-# silencing for now per JSW comment
-# three_lambdas |>
-#   filter(known_lambda == -1.9 |
-#            known_lambda == -2 |
-#            known_lambda == -2.1) |>
-#   ungroup() |>
-#   mutate(abs_delta = abs(known_lambda - value)) |>
-#   ggplot(aes(x = abs_delta,
-#              y = name,
-#              fill = name)) +
-#   stat_halfeye(normalize = "groups") +
-#   scale_fill_manual(values = c(c("#FF914A",
-#                                  "#019AFF",
-#                                  "#FF1984"))) +
-#   facet_grid(known_lambda ~ bias_level,
-#              labeller = label_value,
-#              scales = "free") +
-#   theme_bw()+
-#   labs(x = "\u0394 in \u03bb estimates",
-#        y = "") +
-#   scale_x_continuous(n.breaks = 4)
-# ggsave("plots/lambda_deltas_all_three.png",
-#        units = "in",
-#        height = 10,
-#        width = 10)
 
 # lambda CIs ####
+# Makes SI figures
+# makes summary tables for main text
 fixed_lambda_ci <- fixed_cut |>
   filter(group == "D") |>
   select(known_lambda:lambda_trimmed_hi, M) |>
@@ -345,6 +264,7 @@ fixed_lambda_ci <- fixed_cut |>
          lambda_trimmed_lo,
          lambda_trimmed_hi,
          in_fixed_ci)
+
 # fixed ci plot ####
 fixed_lambda_ci |>
   group_by(M, known_lambda) |>
@@ -508,6 +428,8 @@ biased_lambda_ci_percent <- biased_lambda_ci |>
          mean_ci_width, 
          sd_ci_width) 
 
+# makes table 3 in the main text
+# Summarizing known lambda, estimates from biased and corrected data, proportion of CI's which have the known value, and median absolute deviavation of point estimates
 lambda_summary_table <- xmin_lambda_ci_percent |>
   bind_rows(biased_lambda_ci_percent) |>
   bind_rows(fixed_lambda_ci_percent) |>
@@ -525,6 +447,7 @@ lambda_summary_table <- xmin_lambda_ci_percent |>
          median_abs_delta) 
 
 # Sample sizes ------------------------------------------------------------
+# this is in the SI
 
 n_fixed <- fixed_cut |>
   filter(group == "D") |>
@@ -642,7 +565,9 @@ three_ns |>
 
 # plot comparing xmin and fixed cutoffs beta ------------------------------
 
-# fixed_cut lm models?
+# this fits a simple linear regression to all replicates. It takes a few seconds to run. 
+
+# fixed_cut lm models
 fixed_lm <- fixed_cut |>
   select(group,
          lambda_under,
@@ -677,6 +602,8 @@ fixed_lm <- fixed_cut |>
 fixed_beta <- fixed_lm
 
 # xmin lm-Models
+# this fits a simple linear regression to all replicates. It takes a few seconds to run. 
+
 xmin_lm <- xmin_cut |>
   select(group,
          lambda_under,
@@ -860,6 +787,7 @@ ggsave("plots/betas_all_three.png",
        width = 10)
 
 # beta summary table ####
+# the following section summarizes results for table 4 in the main text
 # beta deviation ####
 # known value; Bias Level; Data; Percent Cis; Mean CI width; Median abs deviation; N replicates
 
@@ -870,9 +798,6 @@ beta_deviation <- betas |>
   summarise(median_abs_delta = median(abs_delta),
             n_reps = n())
 
-# |>
-#   write_csv("simulation_summaries/three_betas.csv")
-
 
 # beta CIs ####
 beta_ci <- betas |>
@@ -880,7 +805,8 @@ beta_ci <- betas |>
          ci_hi = estimate + 1.96*std.error,
          in_ci = known_beta > ci_low & known_beta < ci_hi) 
 
-# 95% ci colored chart beta ####
+# 95% CI colored chart beta ####
+# for SI
 # biased ####
 beta_ci |>
   filter(data_model == "Biased") |>
@@ -989,6 +915,7 @@ beta_ci_percent |>
 
 
 # bar chart of percent beta CI ####
+# old plot, not currently presented
 ggplot(beta_ci_percent,
        aes(x = known_beta, 
            y = percent_ci,
@@ -1001,7 +928,7 @@ ggplot(beta_ci_percent,
   theme_bw() 
 
 # rep lines ---------------------------------------------------------------
-
+# old plot, not currently presented
 fixed_cut |>
   filter(rep %in% c(1:100, 111, 314, 330, 345, 395, 453, 477, 487)) |>
   # numbers are reps which actually have lambda estimates for all 5 "sites"

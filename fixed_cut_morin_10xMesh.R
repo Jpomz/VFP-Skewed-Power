@@ -2,6 +2,11 @@
 # morin recommends a generic cutoff of L = 10X Mesh size
 # testing that here. 
 
+
+### NOTE ###
+# this is much faster than the eztimate_xm() function
+# it only takes ~ 10 minutes on 15 parallel cores
+
 # source("fixed_cut_morin_10xMesh.R")
 
 # this script samples body sizes from bounded power law with known lambdas
@@ -49,6 +54,7 @@ cutoffs_out$cutoff_mass <- sizeSpectra::lengthToMass(
   LWb
 )
 cutoffs_out$cutoff_length <- cutoffs_out$cutoff
+# save these for summarizing later
 saveRDS(cutoffs_out[,2:5], "simulation_results/Morin_10x_cutoff.RDS")
 
 
@@ -119,4 +125,6 @@ saveRDS(run, paste0("simulation_results/fixed_cut_morin_10xM_run_time_s_", Sys.D
 saveRDS(results, "simulation_results/fixed_cut_morin_10xM_sim_run.rds")
 
 # remove Rplots ####
+# the sizeSpectra package makes pdf plots when it cannot fit an estimate
+# remove them here
 file.remove(list.files(pattern = "Rplot*"))

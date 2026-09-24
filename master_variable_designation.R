@@ -4,15 +4,6 @@ set.seed(965)
 vecDiff = 2
 xmin = 0.001
 xmax = 10000
-# pr_scenarios <- data.frame(h = c(
-#   0.00001,
-#   0.0001,
-#   0.001,
-#   0.01),
-#   b = c(1.5),
-#   pr_scenario = c("01", "02", "03", "04"))
-# h = c(0.0001, 0.00001)
-# b = c(1.5, 2)
 n = 10000
 lambda = c(-1.5, -2, -2.5)
 n_iter <- 500

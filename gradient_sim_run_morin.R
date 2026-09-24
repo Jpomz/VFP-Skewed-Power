@@ -1,5 +1,9 @@
 # undersampling gradient simulation
 
+### NOTE ###
+# the estimate_xmin() function takes a long time to run on so many replicates
+# With 15 cores running in parallel it takes ~3 2.5 days
+
 # source("gradient_sim_run_morin.R")
 
 # this script samples body sizes from bounded power law with known lambda
@@ -18,19 +22,7 @@ source("master_variable_designation.R")
 
 rep = n_iter
 
-# beta_groups <- data.frame(
-#   group = rep(LETTERS[1:4], each = 5),
-#   known_beta = rep(c(0, -0.1, -0.25, -0.5),
-#                    each = 5),
-#   known_lambda = c(-1.5, -1.5, -1.5, -1.5, -1.5, 
-#                    -1.4, -1.45, -1.5, -1.55, -1.6,
-#                    -1.25, -1.375, -1.5, -1.625, -1.75,
-#                    -1., -1.25, -1.5, -1.75, -2),
-#   env_gradient = rep(c(-1, -0.5, 0, 0.5, 1), 4),
-#   xmin = xmin, 
-#   xmax = xmax,
-#   vecDiff = vecDiff)
-
+# settings from "master_variable...R"
 beta_groups
 morin_scenarios
 
@@ -98,4 +90,7 @@ saveRDS(run, paste0("simulation_results/gradient_run_morin_time_s_", Sys.Date(),
 saveRDS(results, "simulation_results/gradient_sim_run_morin.rds")
 
 # remove Rplots ####
+# the sizeSpectra package makes pdf plots when it cannot fit an estimate
+# remove them here
+
 file.remove(list.files(pattern = "Rplot*"))

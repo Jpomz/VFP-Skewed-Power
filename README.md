@@ -35,4 +35,22 @@ Here, we use a simulation framework with repeated sampling to explore how under 
 6. Estimate λ from the biased data and from the two censored data sets and compare them with known values of λ.
  
 ## Specific workflow  
-*Update this with names/sequence of scripts to run*
+To fully recreate the simulations and results, run the following scripts in order:
+1. `gradient_sim_rum_morin.R`
+2. `fixed_cut_morin_10xMesh.R`
+3. `compare_fixed_xmin_lambdas.R`
+4. `make_fig_2-3.R` (conceptual figures in main text)
+5. `M0.125_x_bounds.R` (Supplemental Information)
+
+### Notes on specific workflow
+-  both `gradient_sim_run_morin.R` and `fixed_cut_morin_10xMesh.R`source two scripts:
+    -    `custom_functions.R` and `master_variable_designation.R`
+    -    These contain special functions to run the simulations and set global variable values (i.e., known lambdas, hypothetical gradient, sample size, body size range, etc.)
+
+-    The following libraries are required:
+    -    `tidyverse`, `broom`, `tidybayes`, `sizeSpectra`, `parallel`, `foreach`, `doparallel`, `ggpubr`
+    -    `sizeSpectra` can be downloaded by visiting (Andrew Edwards Git Hub page)[https://github.com/andrew-edwards/sizeSpectra] 
+
+-  The `gradient_sim_run_morin.R` script takes approx. 2.5 days to run when using 15 parallel cores.
+-  The results of both `gradient_sim...` and `fixed_cut...` are already in the `simulation_results/` folder
+-  If you simply want to view or interrogate the results, you can begin with the `compare_fixed...` script. 

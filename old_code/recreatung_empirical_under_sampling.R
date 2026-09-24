@@ -11,7 +11,7 @@ tvf <- read_csv("empirical_data_examples/tvf_dw.csv") |>
 min(tvf$dw) # 0.000596 mg
 # plot raw distribution of body masses  
 ggplot(tvf, aes(x = dw)) +
-  geom_histogram(binwidth = 0.01) +
+  geom_histogram(binwidth = 0.1) +
   scale_x_log10() +
   labs(title = "Original sample of x") +
   facet_wrap(~site_number)

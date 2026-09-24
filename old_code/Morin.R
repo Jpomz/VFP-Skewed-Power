@@ -1,8 +1,12 @@
 # Morin's equations
-# morin coefficients
+
+
+# script to test and work out functions and analysis based on equations presented in Morin et al. 2004. 
+
 library(tidyverse)
 library(sizeSpectra)
 
+# morin coefficients
 ln_p  <- function(a = -2.84,
                   b = 5.8, 
                   c = -3.18, 
@@ -46,23 +50,6 @@ logit_p <- log(p/(1-p))
 L_recovered <- M * 10^(logit_p / (a*b + c*log10(M)))
 
 L_test - L_recovered   # should be ~0 if algebra and code are consistent
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 plogis(ln_p(L = 1))
